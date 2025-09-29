@@ -15,7 +15,7 @@ Data will be:
 3. API limits with batching
 4. Tickers will be dropped with sparse or missing data
 
-Libraries used: TODO
+Libraries used: pandas (parquetting, dataframe), yfinance ()
 """
 import pandas as pd
 import yfinance as yf
@@ -25,10 +25,18 @@ import io
 
 
 class PriceLoader:
+    
+    @staticmethod
+    def get_tickers() -> list[str]:
+        """
+        Uses requests module to scrape
+        tickers for all S&P 500 tickers
+        from Wikipedia's website
 
-    def __init__(self):
-        # log start time
-        start = time.time()
+        Returns:
+            list[str]: a list of capital letter tickers
+            as stirngs (Ex: "AAPL")
+        """
         # get all S&P tickers from today, use headers to avoid 403 Forbidden Errors
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
 
@@ -41,44 +49,73 @@ class PriceLoader:
             tickers = pd.read_html(io.StringIO(response.text))[0]["Symbol"].tolist()
         else:
             print(f"Request failed with status code: {response.status_code}")
-            
-        # TODO: Batching
-        def yield_batches(tickers, batch_size):
-            """
-            
-            """
-            # yield yfinance data by batches
-            for i in range(0, len(tickers), batch_size):
-                yield tickers[i: min(i + batch_size, len(tickers))]
+        print(type(tickers))
+        return tickers
+
+    @staticmethod
+    def yield_batches(tickers, batch_size=25):
+        """
+        Generator function that yields tickers
+        in batch sizes of 25 (typically) for 
+        batching. Will be used for yfinance.
+        """
+        # yield yfinance data by batches
+        for i in range(0, len(tickers), batch_size):
+            yield tickers[i: min(i + batch_size, len(tickers))]
+    
+    
+    def save_to_parquet(self):
+        """
+        Uses ticker values from 
+        get_tickers() and then batches
+        the tickers from yfinance. Then
+        saves it from parquet.
+        """
+        
+        # get tickers
+        tickers = self.get_tickers()
+        
+        # create list of concatenated S&P dataframes
+        snp_dfs = []
 
         # batch number for logging
         batch_num = 0
-        # list of batched S&P dataframes that will be appended during batching
-        snp_dfs = []
-
-
-        for batch in yield_batches(tickers, 25):
+        
+        for batch in self.yield_batches(tickers, 25):
             print(f"Downloading batch {batch_num}")
             
-            # get only the closing prices (This is really adjusted close)
-            df = yf.download(tickers=batch, )["Close"]
-            
-            # add dataframe to the to-be concatenated dataframe
-            snp_dfs.append(df)
-            
-            print(f"batch {batch_num} complete!")
+            try:
+                # get only the closing prices (This is really adjusted close)
+                df = yf.download(tickers=batch, start="2005-01-01", end="2025-01-01")["Close"]
+                
+                # add dataframe to the to-be concatenated dataframe
+                snp_dfs.append(df)
+
+                # logging
+                print(f"batch {batch_num} complete!")
+            except Exception:
+                print(f"issue with downloading one of the following tickers: {tickers}")
 
             batch_num += 1
         print(f"total_batches: {batch_num}")
         snp_dfs = pd.concat(snp_dfs, axis=1)
 
-
         # send dataframe to respective parquets
         for ticker in tickers:
-            # separate df into its own data file as parquets
-            ticker_df = snp_dfs.loc[[ticker]]
-            # use ticker for the name
-            ticker_df.to_parquet(f"data/{ticker}.parquet")
+
+            # ensure that there is in fact data for ticker during 2005-2025 before putting into a parquet
+            if ticker in snp_dfs.columns:
+                # separate df into its own data file as parquets
+                ticker_df = snp_dfs.loc[:, [ticker]]
+                # use ticker for the name
+                ticker_df.to_parquet(f"data/{ticker}.parquet")
+                print(f"{ticker} parquet created!")
+
+    def __init__(self):
+        # log start time
+        start = time.time()
+
+        self.save_to_parquet()
 
         # log end time
         end = time.time()
