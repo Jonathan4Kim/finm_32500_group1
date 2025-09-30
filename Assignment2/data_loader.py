@@ -42,8 +42,11 @@ l
                 mdp = MarketDataPoint(timestamp, symbol, price)
                 # append data_points with the new MarketDataPoint instance
                 data_points.append(mdp)
-            data_points[path[:-8]] = mdp
+            name = path.split(".")[0]
+            print(name)
+            all_data_points[name] = mdp
             print(f"{path} loaded!")
+    print(all_data_points)
     return all_data_points
 
 load_data()
