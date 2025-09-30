@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 class Reporting:
     def __init__(self, equity_curve):
         self.equity_curve = equity_curve
+
+    def compute_pnl(self):
+        return self.equity_curve.iloc[-1] - self.equity_curve.iloc[0] if not self.equity_curve.empty else 0
     
     def compute_total_return(self):
-        return (self.equity_curve.iloc[-1] / self.equity_curve.iloc[0]) - 1
+        return (self.equity_curve.iloc[-1] / self.equity_curve.iloc[0]) - 1 if not self.equity_curve.empty else 0
         
     def periodic_return(self, period='D'):
         # returns resampled periodic returns, e.g., daily ('D') or monthly ('M')

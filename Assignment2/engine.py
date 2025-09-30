@@ -1,27 +1,33 @@
 import random
-
+import re
 from data_loader import load_data
-from models import Order, OrderError, ExecutionError
+from models import Order, OrderError, ExecutionError, MarketDataPoint
 import logging
 import pandas as pd
 
 class MarketSimulation:
-    def __init__(self, cash_balance, strategies, order_retries=5):
+    def __init__(self, cash_balance, strategies, order_retries=5, symbols=None):
+        logging.basicConfig(filename='simulation.log', encoding='utf-8')
         self.cash_balance = cash_balance
+        self.NAV_series = pd.Series()
         self.strategies = strategies
         self.signals = []
         self.__order_retries = order_retries
-        # create nav series and portfolios by strategies
         self.portfolio = {}
+
+        # Loads market data
+        self.__market_data_df = load_data(symbols)
+        # Removes special characters from column names
+        self.__market_data_df.columns = self.__market_data_df.columns.str.replace('.', '_')
 
 
     def execute_order(self, order):
         # Check for order errors
         try:
             if order.quantity == 0 or order.quantity != int(order.quantity):
-                raise OrderError("Order quantity must be a non-zero integer")
+                raise OrderError(f"Order quantity must be a non-zero integer, order = {order}")
             elif not (order.symbol and order.quantity and order.price and order.status):
-                raise OrderError("Order is missing attributes")
+                raise OrderError(f"Order is missing attributes, order = {order}")
         except OrderError as e:
             logging.exception("OrderError thrown")
             order.symbol = "CANCELLED"
@@ -39,8 +45,6 @@ class MarketSimulation:
         # Update portfolio and simulate occasional order submission failures
         for num_try in range(self.__order_retries):
             try:
-                if random.randint(1, 10) == 1: # Simulated failure
-                    raise ExecutionError(f"***SIMULATED ERROR***\nFailed to update submit order to portfolio.\nAttempt {num_try+1} of {self.__order_retries}.")
                 self.portfolio[symbol] = current_position
                 self.cash_balance -= quantity * price
                 order.status = "FILLED"
@@ -50,17 +54,22 @@ class MarketSimulation:
 
 
     def run_simulation(self):
-        latest_prices = {}  # keeps track of the most recent price for each symbol
+        # Gets market data for simulation
+        print("Running simulation...")
         nav_history = []    # store NAV over time
+        for i, market_data in enumerate(self.__market_data_df.itertuples()):
+            if i % 100 == 0:
+                print(f"At: {market_data}")
+            for symbol in self.__market_data_df.columns:
+                # Skips symbols that have no data for timestamp
+                if pd.isna(getattr(market_data, symbol)):
+                    continue
 
-        # TODO: this is a dictionary of {k: ticker, v: list[MarketDataPoint]}
-        d = load_data()
-        for ticker, market_data in d.items():
-            for data_point in market_data:
-                raw_signals = []
-                latest_prices[data_point.symbol] = data_point.price
+                # Creates new MarketDataPoint
+                data_point = MarketDataPoint(market_data.Index, symbol, getattr(market_data, symbol))
 
                 # Generate all raw signals from strategies
+                raw_signals = []
                 for strategy in self.strategies:
                     raw_signals.append(strategy.generate_signals(data_point))
 
@@ -75,6 +84,7 @@ class MarketSimulation:
                     combined_action = "HOLD"
 
                 # Generate final signal and order object
+                new_order = None
                 if combined_action == "BUY":
                     size = 0.10 * self.cash_balance // data_point.price
                     final_signal = (combined_action, data_point.symbol, size, data_point.price)
@@ -92,17 +102,9 @@ class MarketSimulation:
                     final_signal = (combined_action, data_point.symbol, 0, data_point.price)
                     self.signals.append(final_signal)
 
-                portfolio_value = sum(
-                    pos['quantity'] * latest_prices[sym]
-                    for sym, pos in self.portfolio.items())
-                nav = self.cash_balance + portfolio_value
-                nav_history.append((data_point.timestamp, nav))
+            # Adds NAV for current timestamp to history
+            portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
+            nav_history.append((market_data.Index, self.cash_balance + portfolio_value))
 
-        # TODO: change so that NAV Is stored for all strategies for all tickers
-        nav_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index
-        return nav_series   
-
-        
-        
-
-
+        # Packages and returns simulation NAV
+        self.NAV_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index

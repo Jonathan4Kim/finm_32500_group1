@@ -1,9 +1,9 @@
 from engine import MarketSimulation
-from BenchmarkStrategy import BenchmarkStrategy
-from MovingAverageStrategy import MAC
-from VolatilityBreakoutStrategy import VolatilityBreakoutStrategy
-from MACDStrategy import MACDStrategy
-from RSIStrategy import RSIStrategy
+from benchmark_strategy import BenchmarkStrategy
+from moving_average_strategy import MAC
+from volatility_breakout_strategy import VolatilityBreakoutStrategy
+from macd_strategy import MACDStrategy
+from rsi_strategy import RSIStrategy
 from reporting import Reporting
 import pprint
 
@@ -16,15 +16,15 @@ def main():
     vol_strategy = VolatilityBreakoutStrategy()
     
     
-    strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
-    new_sim = MarketSimulation(1_000_000, strategies)
+    # strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
+    strategies = [ma_strategy]
+    new_sim = MarketSimulation(1_000_000, strategies, symbols=["AAPL", "NVDA"])
 
-    nav_series = new_sim.run_simulation()
-    pprint.pprint(new_sim.portfolio)
-    print(f"P&L = {new_sim.cash_balance}")
-    # TOTAL TIME: 0.250867
+    new_sim.run_simulation()
 
-    reporter = Reporting(nav_series)  # <-- pass it here
+    reporter = Reporting(new_sim.NAV_series)
+    print(f"Final Cash Balance = {new_sim.cash_balance}")
+    print(f"P&L = {reporter.compute_pnl()}")
     print("Total Return:", reporter.compute_total_return())
     print("Sharpe Ratio:", reporter.sharpe_ratio())
     print("Max Drawdown:", reporter.max_drawdown())

@@ -30,26 +30,17 @@ l
     Returns:
         _type_: _description_
     """
-    # create
-    all_data_points = {}
+    # create market dataframe
+    print("Loading data...")
+    market_data_df = pd.DataFrame()
     for _, _, paths in os.walk("data/"):
         for path in paths:
             if tickers is not None and path.replace(".parquet", "") not in tickers:
                 continue
             df = pd.read_parquet(f"data/{path}")
-            data_points = []
-            for _, row in df.iterrows():
-                timestamp, symbol, price = row["timestamp"], row["symbol"], row["price"]
-                # create new frozen MarketDataPoint instance
-                mdp = MarketDataPoint(timestamp, symbol, price)
-                # append data_points with the new MarketDataPoint instance
-                data_points.append(mdp)
-            name = path.split(".")[0]
-            print(name)
-            all_data_points[name] = data_points
-            print(f"{path} loaded!")
-    print(all_data_points)
-    return all_data_points
+            market_data_df = market_data_df.join(df, how="outer")
+    print("Data loaded...")
+    return market_data_df
 
 if __name__ == "__main__":
     load_data()
