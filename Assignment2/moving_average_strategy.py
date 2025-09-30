@@ -21,30 +21,30 @@ class MAC(Strategy):
 
             # if self.__size > l - s: add to s average
             if self.__size.get(symbol, 0) >= self.__long_window - self.__short_window:
-                self.__short_sum.get(symbol, 0.0) += tick.price
+                self.__short_sum[symbol] = self.__short_sum.get(symbol, 0.0) + tick.price
 
             # always add to lsum
-            self.__long_sum.get(symbol, 0.0) += tick.price
+            self.__long_sum[symbol] = self.__long_sum.get(symbol, 0.0) + tick.price
 
             # regardless, we will always add this to the deque
             self.__dq.get(symbol, deque([])).append(tick.price)
 
             # add 1 to size to avoid it
-            self.__size.get(symbol, 0) += 1
+            self.__size[symbol] = self.__size.get(symbol, 0) + 1
             return ["HOLD"]
 
         # compute moving average
-        short_avg = self.__short_sum.get(symbol, 0.0) / self.__short_window.get(symbol, 0)
-        long_avg = self.__long_sum.get(symbol, 0.0) / self.__long_window.get(symbol, 0)
+        short_avg = self.__short_sum.get(symbol, 0.0) / self.__short_window
+        long_avg = self.__long_sum.get(symbol, 0.0) / self.__long_window
         # update __ssum and __lsum by taking out least recent item in window
-        self.__short_sum -= self.__dq.get(symbol, deque([]))[self.__long_window - self.__short_window]
-        self.__long_sum -= self.__dq.get(symbol, deque([]))[0]
+        self.__short_sum = self.__dq.get(symbol, deque([]))[self.__long_window - self.__short_window]
+        self.__long_sum = self.__dq.get(symbol, deque([]))[0]
         # pop the least recent item from the deque as well
-        self.__dq.popleft()
+        self.__dq[symbol].popleft()
         # add the new price to the deque and sums
         self.__dq.get(symbol, deque([])).append(tick.price)
-        self.__short_sum.get(symbol, 0.0) += tick.price
-        self.__long_sum.get(symbol, 0.0)  += tick.price
+        self.__short_sum[symbol] = self.__short_sum.get(symbol, 0.0) + tick.price
+        self.__long_sum[symbol] = self.__long_sum.get(symbol, 0.0)  + tick.price
         if short_avg > long_avg:
             return ["BUY"]
         elif short_avg < long_avg:

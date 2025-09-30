@@ -63,6 +63,7 @@ class MarketSimulation:
             for symbol in self.__market_data_df.columns:
                 # Skips symbols that have no data for timestamp
                 if pd.isna(getattr(market_data, symbol)):
+                    print("Skipping")
                     continue
 
                 # Creates new MarketDataPoint
