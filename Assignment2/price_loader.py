@@ -87,11 +87,11 @@ class PriceLoader:
         
         for batch in self.yield_batches(tickers, 25):
             print(f"Downloading batch {batch_num}")
-            
+
             try:
                 # get only the closing prices (This is really adjusted close)
                 df = yf.download(tickers=batch, start="2005-01-01", end="2025-01-01")["Close"]
-                
+
                 # add dataframe to the to-be concatenated dataframe
                 snp_dfs.append(df)
 
@@ -101,7 +101,7 @@ class PriceLoader:
                 print(f"issue with downloading one of the following tickers: {tickers}")
 
             batch_num += 1
-        print(f"total_batches: {batch_num}")
+        # print(f"total_batches: {batch_num}")
         snp_dfs = pd.concat(snp_dfs, axis=1)
 
         # send dataframe to respective parquets
@@ -114,7 +114,7 @@ class PriceLoader:
                 # ticker_df = ticker_df.rename(columns={f"{ticker}": "price"})
                 # use ticker for the name
                 ticker_df.to_parquet(f"data/{ticker}.parquet")
-                print(f"{ticker} parquet created!")
+                # print(f"{ticker} parquet created!")
 
     def __init__(self):
         # log start time
