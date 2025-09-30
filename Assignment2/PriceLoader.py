@@ -23,7 +23,7 @@ import yfinance as yf
 import time
 import requests
 import io
-
+import os
 
 class PriceLoader:
     
@@ -72,6 +72,9 @@ class PriceLoader:
         the tickers from yfinance. Then
         saves it from parquet.
         """
+        # create directory
+        if not os.path.exists("data/"):
+            os.makedirs("data")
         
         # get tickers
         tickers = self.get_tickers()
