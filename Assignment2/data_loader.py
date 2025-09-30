@@ -18,7 +18,7 @@ import os
 import pandas as pd
 
 
-def load_data():
+def load_data(tickers=None):
     """
     Gets the datapoints from a pa
     and for each row,
@@ -34,6 +34,8 @@ l
     all_data_points = {}
     for _, _, paths in os.walk("data/"):
         for path in paths:
+            if tickers is not None and path.replace(".parquet", "") not in tickers:
+                continue
             df = pd.read_parquet(f"data/{path}")
             data_points = []
             for _, row in df.iterrows():
@@ -44,9 +46,10 @@ l
                 data_points.append(mdp)
             name = path.split(".")[0]
             print(name)
-            all_data_points[name] = mdp
+            all_data_points[name] = data_points
             print(f"{path} loaded!")
     print(all_data_points)
     return all_data_points
 
-load_data()
+if __name__ == "__main__":
+    load_data()
