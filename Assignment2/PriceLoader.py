@@ -17,6 +17,7 @@ Data will be:
 
 Libraries used: pandas (parquetting, dataframe), yfinance ()
 """
+
 import pandas as pd
 import yfinance as yf
 import time
@@ -107,6 +108,9 @@ class PriceLoader:
             if ticker in snp_dfs.columns:
                 # separate df into its own data file as parquets
                 ticker_df = snp_dfs.loc[:, [ticker]]
+                ticker_df["timestamp"] = ticker_df.index
+                ticker_df["symbol"] = ticker
+                ticker_df = ticker_df.rename(columns={f"{ticker}": "price"})
                 # use ticker for the name
                 ticker_df.to_parquet(f"data/{ticker}.parquet")
                 print(f"{ticker} parquet created!")
