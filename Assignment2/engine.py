@@ -58,8 +58,8 @@ class MarketSimulation:
         print("Running simulation...")
         nav_history = []    # store NAV over time
         for i, market_data in enumerate(self.__market_data_df.itertuples()):
-            if i % 100 == 0:
-                print(f"Now processing timestamp #{i}: {market_data}")
+            if i % (self.__market_data_df.shape[0] // 10) == 0:
+                print(f"Simulation {i / self.__market_data_df.shape[0]:.1%} complete...")
             for symbol in self.__market_data_df.columns:
                 # Skips symbols that have no data for timestamp
                 if pd.isna(getattr(market_data, symbol)):
