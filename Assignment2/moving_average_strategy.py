@@ -17,7 +17,6 @@ class MAC(Strategy):
 
     def generate_signals(self, tick):
         symbol = tick.symbol
-        print(self.__size.get(symbol, 0))
         if self.__size.get(symbol, 0) < self.__long_window:
 
             # if self.__size > l - s: add to s average
@@ -50,7 +49,6 @@ class MAC(Strategy):
             self.__dq[symbol].append(tick.price)
         else:
             self.__dq[symbol] = deque([tick.price])
-        print(self.__dq)
         self.__short_sum[symbol] = self.__short_sum.get(symbol, 0.0) + tick.price
         self.__long_sum[symbol] = self.__long_sum.get(symbol, 0.0)  + tick.price
         if short_avg > long_avg:
