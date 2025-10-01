@@ -17,6 +17,9 @@ class MAC(Strategy):
 
     def generate_signals(self, tick):
         symbol = tick.symbol
+        print(symbol)
+        if symbol not in self.__dq:
+            self.__dq[symbol] = deque([])
         if self.__size.get(symbol, 0) < self.__long_window:
 
             # if self.__size > l - s: add to s average
@@ -37,17 +40,20 @@ class MAC(Strategy):
         short_avg = self.__short_sum.get(symbol, 0.0) / self.__short_window
         long_avg = self.__long_sum.get(symbol, 0.0) / self.__long_window
         # update __ssum and __lsum by taking out least recent item in window
-        self.__short_sum = self.__dq.get(symbol, deque([]))[self.__long_window - self.__short_window]
-        self.__long_sum = self.__dq.get(symbol, deque([]))[0]
+        self.__short_sum[symbol] = self.__dq.get(symbol, deque([]))[0]
+        self.__long_sum[symbol] = self.__dq.get(symbol, deque([]))[0]
         # pop the least recent item from the deque as well
         self.__dq[symbol].popleft()
         # add the new price to the deque and sums
         self.__dq.get(symbol, deque([])).append(tick.price)
-        self.__short_sum[symbol] = self.__short_sum.get(symbol, 0.0) + tick.price
+        self.__short_sum[symbol] = self.__short_sum[symbol] + tick.price
         self.__long_sum[symbol] = self.__long_sum.get(symbol, 0.0)  + tick.price
         if short_avg > long_avg:
+            print("buy")
             return ["BUY"]
         elif short_avg < long_avg:
+            print("sell")
             return ["SELL"]
         else:
+            print("hold")
             return ["HOLD"]
