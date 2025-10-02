@@ -128,3 +128,4 @@ class PriceLoader:
                 # Save to parquet
                 ticker_df.to_parquet(f"data/{ticker}.parquet")
                 print(f"{ticker} parquet created!")
+PriceLoader()
