@@ -26,6 +26,18 @@ import io
 import os
 
 class PriceLoader:
+
+    def __init__(self):
+        # log start time
+        start = time.time()
+
+        self.save_to_parquet()
+
+        # log end time
+        end = time.time()
+
+        # see how long batching took
+        print(f"total batching and data loading time took {end - start:0.2f} seconds")
     
     @staticmethod
     def get_tickers() -> list[str]:
@@ -110,23 +122,9 @@ class PriceLoader:
                 # Select both Close and Volume columns for the ticker
                 ticker_df = snp_dfs.loc[:, [('Close', ticker), ('Volume', ticker)]]
 
-                # Optional: flatten the column index so it's easier to work with
+                # Flatten the column index so it's easier to work with
                 ticker_df.columns = ['Close', 'Volume']
 
                 # Save to parquet
                 ticker_df.to_parquet(f"data/{ticker}.parquet")
                 print(f"{ticker} parquet created!")
-
-    def __init__(self):
-        # log start time
-        start = time.time()
-
-        self.save_to_parquet()
-
-        # log end time
-        end = time.time()
-
-        # see how long batching took
-        print(f"total batching and data loading time took {end - start:0.2f} seconds")
-
-pl = PriceLoader()

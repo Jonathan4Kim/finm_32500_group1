@@ -1,5 +1,50 @@
-import random
-import re
+
+"""
+market_simulation.py
+
+This module defines the `MarketSimulation` class, which simulates the execution of trading strategies
+over historical market data.
+
+The simulator:
+- Loads price and volume data using `load_data()` from the data_loader module
+- Runs through each time step in the data
+- Calls one or more strategy objects to generate trading signals (BUY, SELL, HOLD)
+- Aggregates signals to decide on a final action
+- Creates and executes simulated orders
+- Tracks a portfolio and cash balance over time
+- Records Net Asset Value (NAV) at each step
+
+Class:
+    MarketSimulation
+        Simulates a portfolio given starting cash, strategies, and historical market data.
+
+Key Methods:
+    - run_simulation(): Executes the full backtest over all timestamps in the data
+    - execute_order(order): Processes a simulated order, updates cash and portfolio
+    - calc_position_size(timestamp, symbol, price, action): Computes the appropriate trade size
+    - NAV_series: A pandas Series of the portfolio NAV over time
+
+Dependencies:
+    - pandas
+    - numpy
+    - logging
+    - data_loader.load_data: loads price and volume market data
+    - models.Order, OrderError, ExecutionError, MarketDataPoint
+
+Example usage:
+    from market_simulation import MarketSimulation
+    from strategy import MyStrategy
+
+    strategy = MyStrategy()
+    sim = MarketSimulation(cash_balance=1_000_000, strategies=[strategy], symbols=["AAPL", "MSFT"])
+    sim.run_simulation()
+    sim.NAV_series.plot()  # Visualize NAV over time
+
+Notes:
+- The simulator respects a volume cap (ADV_limit) to restrict order sizes.
+- Orders are retried in case of simulated execution errors (up to `order_retries` times).
+- The simulation assumes trades are filled at historical closing prices.
+"""
 from data_loader import load_data
 from models import Order, OrderError, ExecutionError, MarketDataPoint
 import logging
@@ -20,8 +65,10 @@ class MarketSimulation:
         raw_market_data = load_data(tickers=symbols)
         self.__price_data_df = raw_market_data["Close"]
         self.__volume_data_df = raw_market_data["Volume"]
+
         # Removes special characters from column names
         self.__price_data_df.columns = self.__price_data_df.columns.str.replace('.', '_')
+        self.__volume_data_df.columns = self.__volume_data_df.columns.str.replace('.', '_')
 
 
     def execute_order(self, order):
@@ -98,6 +145,7 @@ class MarketSimulation:
                     self.execute_order(Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN"))
 
             # Adds NAV for current timestamp to history
+            # TODO could calculate NAV in post to increase speed of sim
             portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
             nav_history.append((market_data.Index, self.cash_balance + portfolio_value))
 
@@ -106,10 +154,12 @@ class MarketSimulation:
 
 
     def calc_position_size(self, timestamp, symbol, price, action):
+        # Limits buy size based on ADV or maximum possible size
         if action == "BUY":
             max_size = int(self.__ADV_limit * self.__volume_data_df.loc[timestamp, symbol])
             possible_size = self.cash_balance // price
             return min(max_size, possible_size)
+        # Sells total position if possible
         elif action == "SELL" and self.portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
             return self.portfolio[symbol]["quantity"]
         return 0
