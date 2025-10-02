@@ -16,16 +16,7 @@ def main():
     vol_strategy = VolatilityBreakoutStrategy()
     
     
-<<<<<<< Updated upstream
     strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
-=======
-<<<<<<< HEAD
-    # strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
-    strategies = [macd_strategy, ma_strategy, rsi_strategy, vol_strategy]
-=======
-    strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
->>>>>>> bf601d67da9cf00d3feb32a3f5cdabc8a724e721
->>>>>>> Stashed changes
     new_sim = MarketSimulation(1_000_000, strategies, symbols=["AAPL"])
 
     new_sim.run_simulation()
