@@ -14,8 +14,7 @@ def main():
     rsi_strategy = RSIStrategy()
     macd_strategy = MACDStrategy()
     vol_strategy = VolatilityBreakoutStrategy()
-    
-    
+
     strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
     new_sim = MarketSimulation(1_000_000, strategies, symbols=["AAPL"])
 
