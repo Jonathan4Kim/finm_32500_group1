@@ -26,6 +26,18 @@ import io
 import os
 
 class PriceLoader:
+
+    def __init__(self):
+        # log start time
+        start = time.time()
+
+        self.save_to_parquet()
+
+        # log end time
+        end = time.time()
+
+        # see how long batching took
+        print(f"total batching and data loading time took {end - start:0.2f} seconds")
     
     @staticmethod
     def get_tickers() -> list[str]:
@@ -50,7 +62,6 @@ class PriceLoader:
             tickers = pd.read_html(io.StringIO(response.text))[0]["Symbol"].tolist()
         else:
             print(f"Request failed with status code: {response.status_code}")
-        print(type(tickers))
         return tickers
 
     @staticmethod
@@ -87,10 +98,10 @@ class PriceLoader:
         
         for batch in self.yield_batches(tickers, 25):
             print(f"Downloading batch {batch_num}")
-
+            
             try:
                 # get only the closing prices (This is really adjusted close)
-                df = yf.download(tickers=batch, start="2005-01-01", end="2025-01-01")["Close"]
+                df = yf.download(tickers=batch, start="2005-01-01", end="2025-01-01", auto_adjust=True).loc[:, ["Close", "Volume"]]
 
                 # add dataframe to the to-be concatenated dataframe
                 snp_dfs.append(df)
@@ -101,31 +112,19 @@ class PriceLoader:
                 print(f"issue with downloading one of the following tickers: {tickers}")
 
             batch_num += 1
-        # print(f"total_batches: {batch_num}")
+        print(f"total_batches: {batch_num}")
         snp_dfs = pd.concat(snp_dfs, axis=1)
 
         # send dataframe to respective parquets
         for ticker in tickers:
+            # Check if both 'Close' and 'Volume' exist for this ticker
+            if ('Close', ticker) in snp_dfs.columns and ('Volume', ticker) in snp_dfs.columns:
+                # Select both Close and Volume columns for the ticker
+                ticker_df = snp_dfs.loc[:, [('Close', ticker), ('Volume', ticker)]]
 
-            # ensure that there is in fact data for ticker during 2005-2025 before putting into a parquet
-            if ticker in snp_dfs.columns:
-                # separate df into its own data file as parquets
-                ticker_df = snp_dfs.loc[:, [ticker]]
-                # ticker_df = ticker_df.rename(columns={f"{ticker}": "price"})
-                # use ticker for the name
+                # Flatten the column index so it's easier to work with
+                ticker_df.columns = ['Close', 'Volume']
+
+                # Save to parquet
                 ticker_df.to_parquet(f"data/{ticker}.parquet")
-                # print(f"{ticker} parquet created!")
-
-    def __init__(self):
-        # log start time
-        start = time.time()
-
-        self.save_to_parquet()
-
-        # log end time
-        end = time.time()
-
-        # see how long batching took
-        print(f"total batching and data loading time took {end - start:0.2f} seconds")
-
-pl = PriceLoader()
+                print(f"{ticker} parquet created!")

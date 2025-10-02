@@ -1,46 +1,63 @@
 """
-
 data_loader.py
 
-Responsible for loading the datapoints using the
-get_datapoints() method. Utilizes frozen class
-MarketDataPoint to store each row of each ticker from the data/ file
-into its own instance, conglomerating them into 
-a list to be returned by the function
+This module provides functionality for loading individual stock data files (in Parquet format)
+from the "data/" directory and combining them into a single pandas DataFrame with a MultiIndex
+column structure.
 
+Each file is expected to contain time-indexed data for a single ticker, with columns such as
+"Close", "Volume", etc. The columns are re-labeled during loading so that the final DataFrame
+has a MultiIndex with two levels:
+    - Level 0: Data field (e.g., "Close", "Volume")
+    - Level 1: Ticker symbol (e.g., "AAPL", "MSFT")
+
+Example column structure:
+    ('Close', 'AAPL'), ('Volume', 'AAPL'), ('Close', 'MSFT'), ...
+
+Function:
+    load_data(tickers=None)
+        Loads data for the specified tickers (or all if None), merges into a single DataFrame,
+        and returns it.
+
+Example usage:
+    df = load_data(tickers=["AAPL", "NVDA"])
+    prices = df["Close"]
+    volumes = df["Volume"]
 """
 
-# imports
-import csv
-from datetime import datetime
-from models import MarketDataPoint
 import os
 import pandas as pd
 
 
 def load_data(tickers=None):
-    """
-    Gets the datapoints from a pa
-    and for each row,
-    converts each part of the row into its respective 
-    datatype for the MarketDataPoint object.
-    stores all of those instances into the 
-    data_points array to be returned
-l
-    Returns:
-        _type_: _description_
-    """
-    # create market dataframe
     print("Loading data...")
-    market_data_df = pd.DataFrame()
+    data_frames = []
     for _, _, paths in os.walk("data/"):
         for path in paths:
-            if tickers is not None and path.replace(".parquet", "") not in tickers:
+            if not path.endswith(".parquet"):
                 continue
-            df = pd.read_parquet(f"data/{path}")
-            market_data_df = market_data_df.join(df, how="outer")
+
+            ticker = path.replace(".parquet", "")
+
+            # Skip if tickers are specified and this one isn't in the list
+            if tickers is not None and ticker not in tickers:
+                continue
+
+            df = pd.read_parquet(os.path.join("data/", path))
+
+            # Add a MultiIndex to columns: (field, ticker)
+            df.columns = pd.MultiIndex.from_product([df.columns, [ticker]])
+
+            data_frames.append(df)
+
+    # Combine all the DataFrames on the index
+    if data_frames:
+        market_data_df = pd.concat(data_frames, axis=1)
+    else:
+        market_data_df = pd.DataFrame()
+
     print("Data loaded...")
     return market_data_df
 
 if __name__ == "__main__":
-    load_data()
+    print(load_data(tickers=["AAPL", "NVDA"]))

@@ -1,3 +1,38 @@
+"""
+reporting.py
+
+This module defines the `Reporting` class, which provides a suite of performance analytics
+tools for analyzing the equity curve (cumulative portfolio value over time) of a trading strategy
+or investment portfolio.
+
+The class accepts a pandas Series `equity_curve` indexed by datetime, and includes methods to compute:
+
+- Total profit and loss (PnL)
+- Total return over the period
+- Periodic returns (e.g., daily, monthly)
+- Sharpe ratio (risk-adjusted return)
+- Maximum drawdown (largest peak-to-trough decline)
+- Equity curve plotting
+
+Typical usage:
+
+    from reporting import Reporting
+
+    report = Reporting(equity_curve)
+    print("PnL:", report.compute_pnl())
+    print("Sharpe Ratio:", report.sharpe_ratio())
+    report.plot_equity_curve()
+
+Methods:
+    - compute_pnl(): Return total profit/loss over the equity curve.
+    - compute_total_return(): Return cumulative return as a percentage.
+    - periodic_return(period='D'): Return periodic percentage changes (daily, monthly, etc.).
+    - sharpe_ratio(risk_free_rate=0.0, periods_per_year=252): Return annualized Sharpe ratio.
+    - max_drawdown(): Return the largest observed drawdown.
+    - plot_equity_curve(title="Equity Curve"): Display a matplotlib plot of the equity curve.
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 

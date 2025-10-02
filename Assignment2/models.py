@@ -1,8 +1,3 @@
-"""
-order.py
-"""
-
-# imports
 import unittest
 from dataclasses import FrozenInstanceError
 from datetime import datetime

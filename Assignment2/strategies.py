@@ -1,8 +1,5 @@
 from abc import ABC, abstractmethod
-# TODO: CHANGE IF WE MOVE MARKETDATAPOINT CLASS TO MODELS.PY
-from data_loader import MarketDataPoint
-from data_loader import load_data
-from collections import deque
+from models import MarketDataPoint
 
 class Strategy(ABC):
     # TODO: remove list return

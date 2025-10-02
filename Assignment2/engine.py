@@ -1,24 +1,75 @@
-import random
-import re
+
+"""
+market_simulation.py
+
+This module defines the `MarketSimulation` class, which simulates the execution of trading strategies
+over historical market data.
+
+The simulator:
+- Loads price and volume data using `load_data()` from the data_loader module
+- Runs through each time step in the data
+- Calls one or more strategy objects to generate trading signals (BUY, SELL, HOLD)
+- Aggregates signals to decide on a final action
+- Creates and executes simulated orders
+- Tracks a portfolio and cash balance over time
+- Records Net Asset Value (NAV) at each step
+
+Class:
+    MarketSimulation
+        Simulates a portfolio given starting cash, strategies, and historical market data.
+
+Key Methods:
+    - run_simulation(): Executes the full backtest over all timestamps in the data
+    - execute_order(order): Processes a simulated order, updates cash and portfolio
+    - calc_position_size(timestamp, symbol, price, action): Computes the appropriate trade size
+    - NAV_series: A pandas Series of the portfolio NAV over time
+
+Dependencies:
+    - pandas
+    - numpy
+    - logging
+    - data_loader.load_data: loads price and volume market data
+    - models.Order, OrderError, ExecutionError, MarketDataPoint
+
+Example usage:
+    from market_simulation import MarketSimulation
+    from strategy import MyStrategy
+
+    strategy = MyStrategy()
+    sim = MarketSimulation(cash_balance=1_000_000, strategies=[strategy], symbols=["AAPL", "MSFT"])
+    sim.run_simulation()
+    sim.NAV_series.plot()  # Visualize NAV over time
+
+Notes:
+- The simulator respects a volume cap (ADV_limit) to restrict order sizes.
+- Orders are retried in case of simulated execution errors (up to `order_retries` times).
+- The simulation assumes trades are filled at historical closing prices.
+"""
 from data_loader import load_data
 from models import Order, OrderError, ExecutionError, MarketDataPoint
 import logging
 import pandas as pd
 
 class MarketSimulation:
-    def __init__(self, cash_balance, strategies, order_retries=5, symbols=None):
+    def __init__(self, cash_balance, strategies, symbols=None, order_retries=5, adv_limit=0.10, transaction_cost=0.00):
         logging.basicConfig(filename='simulation.log', encoding='utf-8')
         self.cash_balance = cash_balance
         self.NAV_series = pd.Series()
         self.strategies = strategies
         self.signals = []
         self.__order_retries = order_retries
+        self.__adv_limit = adv_limit
+        self.__transaction_cost = transaction_cost
         self.portfolio = {}
 
         # Loads market data
-        self.__market_data_df = load_data(symbols)
+        raw_market_data = load_data(tickers=symbols)
+        self.__price_data_df = raw_market_data["Close"]
+        self.__volume_data_df = raw_market_data["Volume"]
+
         # Removes special characters from column names
-        self.__market_data_df.columns = self.__market_data_df.columns.str.replace('.', '_')
+        self.__price_data_df.columns = self.__price_data_df.columns.str.replace('.', '_')
+        self.__volume_data_df.columns = self.__volume_data_df.columns.str.replace('.', '_')
 
 
     def execute_order(self, order):
@@ -38,7 +89,8 @@ class MarketSimulation:
         quantity = order.quantity
         price = order.price
         current_position = self.portfolio.get(symbol, {"quantity": 0, "avg_price": 0.0, "orders": []})
-        current_position["avg_price"] = (current_position["avg_price"] * current_position["quantity"] + price * quantity) / (current_position["quantity"] + 1)
+        net_quantity = current_position["quantity"] + quantity
+        current_position["avg_price"] = (current_position["avg_price"] * current_position["quantity"] + price * quantity) / (current_position["quantity"] + quantity) if net_quantity != 0 else 0
         current_position["quantity"] += quantity
         current_position["orders"].append(order)
 
@@ -46,7 +98,7 @@ class MarketSimulation:
         for num_try in range(self.__order_retries):
             try:
                 self.portfolio[symbol] = current_position
-                self.cash_balance -= quantity * price
+                self.cash_balance -= quantity * price + self.__transaction_cost * abs(quantity * price)
                 order.status = "FILLED"
                 break
             except ExecutionError as e:
@@ -57,13 +109,12 @@ class MarketSimulation:
         # Gets market data for simulation
         print("Running simulation...")
         nav_history = []    # store NAV over time
-        for i, market_data in enumerate(self.__market_data_df.itertuples()):
-            if i % (self.__market_data_df.shape[0] // 10) == 0:
-                print(f"Simulation {i / self.__market_data_df.shape[0]:.1%} complete...")
-            for symbol in self.__market_data_df.columns:
+        for i, market_data in enumerate(self.__price_data_df.itertuples()):
+            if i % (self.__price_data_df.shape[0] // 10) == 0:
+                print(f"Simulation {i / self.__price_data_df.shape[0]:.1%} complete...")
+            for symbol in self.__price_data_df.columns:
                 # Skips symbols that have no data for timestamp
                 if pd.isna(getattr(market_data, symbol)):
-                    print("Skipping")
                     continue
 
                 # Creates new MarketDataPoint
@@ -85,27 +136,33 @@ class MarketSimulation:
                     combined_action = "HOLD"
 
                 # Generate final signal and order object
-                new_order = None
+                size = self.calc_position_size(data_point.timestamp, data_point.symbol, data_point.price, combined_action)
+                final_signal = (combined_action, data_point.symbol, size, data_point.price)
+                self.signals.append(final_signal)
+                if size == 0:
+                    continue
                 if combined_action == "BUY":
-                    size = 0.10 * self.cash_balance // data_point.price
-                    final_signal = (combined_action, data_point.symbol, size, data_point.price)
-                    self.signals.append(final_signal)
-                    new_order = Order(final_signal[1], final_signal[2], final_signal[3], "OPEN")
-                    self.execute_order(new_order)
+                    self.execute_order(Order(final_signal[1], final_signal[2], final_signal[3], "OPEN"))
                 # make sure we don't sell when we have no position
                 elif combined_action == "SELL" and self.portfolio.get(data_point.symbol, {"quantity": 0})["quantity"] > 0:
-                    size = self.portfolio[data_point.symbol]["quantity"]
-                    final_signal = (combined_action, data_point.symbol, size, data_point.price)
-                    self.signals.append(final_signal)
-                    new_order = Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN")
-                    self.execute_order(new_order)
-                elif combined_action == "HOLD":
-                    final_signal = (combined_action, data_point.symbol, 0, data_point.price)
-                    self.signals.append(final_signal)
+                    self.execute_order(Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN"))
 
             # Adds NAV for current timestamp to history
+            # TODO could calculate NAV in post to increase speed of sim
             portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
             nav_history.append((market_data.Index, self.cash_balance + portfolio_value))
 
         # Packages and returns simulation NAV
         self.NAV_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index
+
+
+    def calc_position_size(self, timestamp, symbol, price, action):
+        # Limits buy size based on ADV or maximum possible size
+        if action == "BUY":
+            max_size = int(self.__adv_limit * self.__volume_data_df.loc[timestamp, symbol])
+            possible_size = self.cash_balance // (price * (1+self.__transaction_cost))
+            return min(max_size, possible_size)
+        # Sells total position if possible
+        elif action == "SELL" and self.portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
+            return self.portfolio[symbol]["quantity"]
+        return 0

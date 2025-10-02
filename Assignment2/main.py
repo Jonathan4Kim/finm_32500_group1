@@ -5,7 +5,7 @@ from volatility_breakout_strategy import VolatilityBreakoutStrategy
 from macd_strategy import MACDStrategy
 from rsi_strategy import RSIStrategy
 from reporting import Reporting
-import pprint
+
 
 def main():
     # create strategy instantiations
