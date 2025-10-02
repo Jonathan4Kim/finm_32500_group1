@@ -31,16 +31,45 @@ l
         _type_: _description_
     """
     # create market dataframe
+    # print("Loading data...")
+    # market_data_df = pd.DataFrame()
+    # for _, _, paths in os.walk("data/"):
+    #     for path in paths:
+    #         if tickers is not None and path.replace(".parquet", "") not in tickers:
+    #             continue
+    #         df = pd.read_parquet(f"data/{path}")
+    #         market_data_df = market_data_df.join(df, how="outer")
+    # print("Data loaded...")
+    # return
+
     print("Loading data...")
-    market_data_df = pd.DataFrame()
+    data_frames = []
     for _, _, paths in os.walk("data/"):
         for path in paths:
-            if tickers is not None and path.replace(".parquet", "") not in tickers:
+            if not path.endswith(".parquet"):
                 continue
-            df = pd.read_parquet(f"data/{path}")
-            market_data_df = market_data_df.join(df, how="outer")
+
+            ticker = path.replace(".parquet", "")
+
+            # Skip if tickers are specified and this one isn't in the list
+            if tickers is not None and ticker not in tickers:
+                continue
+
+            df = pd.read_parquet(os.path.join("data/", path))
+
+            # Add a MultiIndex to columns: (field, ticker)
+            df.columns = pd.MultiIndex.from_product([df.columns, [ticker]])
+
+            data_frames.append(df)
+
+    # Combine all the DataFrames on the index
+    if data_frames:
+        market_data_df = pd.concat(data_frames, axis=1)
+    else:
+        market_data_df = pd.DataFrame()
+
     print("Data loaded...")
     return market_data_df
 
 if __name__ == "__main__":
-    load_data()
+    print(load_data(tickers=["AAPL", "NVDA"]))

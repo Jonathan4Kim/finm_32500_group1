@@ -6,19 +6,22 @@ import logging
 import pandas as pd
 
 class MarketSimulation:
-    def __init__(self, cash_balance, strategies, order_retries=5, symbols=None):
+    def __init__(self, cash_balance, strategies, symbols=None, order_retries=5, ADV_limit = 0.10):
         logging.basicConfig(filename='simulation.log', encoding='utf-8')
         self.cash_balance = cash_balance
         self.NAV_series = pd.Series()
         self.strategies = strategies
         self.signals = []
         self.__order_retries = order_retries
+        self.__ADV_limit = ADV_limit
         self.portfolio = {}
 
         # Loads market data
-        self.__market_data_df = load_data(symbols)
+        raw_market_data = load_data(tickers=symbols)
+        self.__price_data_df = raw_market_data["Close"]
+        self.__volume_data_df = raw_market_data["Volume"]
         # Removes special characters from column names
-        self.__market_data_df.columns = self.__market_data_df.columns.str.replace('.', '_')
+        self.__price_data_df.columns = self.__price_data_df.columns.str.replace('.', '_')
 
 
     def execute_order(self, order):
@@ -57,10 +60,10 @@ class MarketSimulation:
         # Gets market data for simulation
         print("Running simulation...")
         nav_history = []    # store NAV over time
-        for i, market_data in enumerate(self.__market_data_df.itertuples()):
-            if i % (self.__market_data_df.shape[0] // 10) == 0:
-                print(f"Simulation {i / self.__market_data_df.shape[0]:.1%} complete...")
-            for symbol in self.__market_data_df.columns:
+        for i, market_data in enumerate(self.__price_data_df.itertuples()):
+            if i % (self.__price_data_df.shape[0] // 10) == 0:
+                print(f"Simulation {i / self.__price_data_df.shape[0]:.1%} complete...")
+            for symbol in self.__price_data_df.columns:
                 # Skips symbols that have no data for timestamp
                 if pd.isna(getattr(market_data, symbol)):
                     print("Skipping")
@@ -85,23 +88,14 @@ class MarketSimulation:
                     combined_action = "HOLD"
 
                 # Generate final signal and order object
-                new_order = None
+                size = self.calc_position_size(data_point.timestamp, data_point.symbol, data_point.price, combined_action)
+                final_signal = (combined_action, data_point.symbol, size, data_point.price)
+                self.signals.append(final_signal)
                 if combined_action == "BUY":
-                    size = 0.10 * self.cash_balance // data_point.price
-                    final_signal = (combined_action, data_point.symbol, size, data_point.price)
-                    self.signals.append(final_signal)
-                    new_order = Order(final_signal[1], final_signal[2], final_signal[3], "OPEN")
-                    self.execute_order(new_order)
+                    self.execute_order(Order(final_signal[1], final_signal[2], final_signal[3], "OPEN"))
                 # make sure we don't sell when we have no position
                 elif combined_action == "SELL" and self.portfolio.get(data_point.symbol, {"quantity": 0})["quantity"] > 0:
-                    size = self.portfolio[data_point.symbol]["quantity"]
-                    final_signal = (combined_action, data_point.symbol, size, data_point.price)
-                    self.signals.append(final_signal)
-                    new_order = Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN")
-                    self.execute_order(new_order)
-                elif combined_action == "HOLD":
-                    final_signal = (combined_action, data_point.symbol, 0, data_point.price)
-                    self.signals.append(final_signal)
+                    self.execute_order(Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN"))
 
             # Adds NAV for current timestamp to history
             portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
@@ -109,3 +103,13 @@ class MarketSimulation:
 
         # Packages and returns simulation NAV
         self.NAV_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index
+
+
+    def calc_position_size(self, timestamp, symbol, price, action):
+        if action == "BUY":
+            max_size = int(self.__ADV_limit * self.__volume_data_df.loc[timestamp, symbol])
+            possible_size = self.cash_balance // price
+            return min(max_size, possible_size)
+        elif action == "SELL" and self.portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
+            return self.portfolio[symbol]["quantity"]
+        return 0

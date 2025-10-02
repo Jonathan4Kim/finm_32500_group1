@@ -17,7 +17,6 @@ class MAC(Strategy):
 
     def generate_signals(self, tick):
         symbol = tick.symbol
-        print(symbol)
         if symbol not in self.__dq:
             self.__dq[symbol] = deque([])
         if self.__size.get(symbol, 0) < self.__long_window:
@@ -55,11 +54,8 @@ class MAC(Strategy):
         self.__short_sum[symbol] = self.__short_sum.get(symbol, 0.0) + tick.price
         self.__long_sum[symbol] = self.__long_sum.get(symbol, 0.0)  + tick.price
         if short_avg > long_avg:
-            print("buy")
             return ["BUY"]
         elif short_avg < long_avg:
-            print("sell")
             return ["SELL"]
         else:
-            print("hold")
             return ["HOLD"]
