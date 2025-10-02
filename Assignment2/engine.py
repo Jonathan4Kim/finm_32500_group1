@@ -51,14 +51,15 @@ import logging
 import pandas as pd
 
 class MarketSimulation:
-    def __init__(self, cash_balance, strategies, symbols=None, order_retries=5, ADV_limit = 0.10):
+    def __init__(self, cash_balance, strategies, symbols=None, order_retries=5, adv_limit=0.10, transaction_cost=0.00):
         logging.basicConfig(filename='simulation.log', encoding='utf-8')
         self.cash_balance = cash_balance
         self.NAV_series = pd.Series()
         self.strategies = strategies
         self.signals = []
         self.__order_retries = order_retries
-        self.__ADV_limit = ADV_limit
+        self.__adv_limit = adv_limit
+        self.__transaction_cost = transaction_cost
         self.portfolio = {}
 
         # Loads market data
@@ -88,7 +89,8 @@ class MarketSimulation:
         quantity = order.quantity
         price = order.price
         current_position = self.portfolio.get(symbol, {"quantity": 0, "avg_price": 0.0, "orders": []})
-        current_position["avg_price"] = (current_position["avg_price"] * current_position["quantity"] + price * quantity) / (current_position["quantity"] + 1)
+        net_quantity = current_position["quantity"] + quantity
+        current_position["avg_price"] = (current_position["avg_price"] * current_position["quantity"] + price * quantity) / (current_position["quantity"] + quantity) if net_quantity != 0 else 0
         current_position["quantity"] += quantity
         current_position["orders"].append(order)
 
@@ -96,7 +98,7 @@ class MarketSimulation:
         for num_try in range(self.__order_retries):
             try:
                 self.portfolio[symbol] = current_position
-                self.cash_balance -= quantity * price
+                self.cash_balance -= quantity * price + self.__transaction_cost * abs(quantity * price)
                 order.status = "FILLED"
                 break
             except ExecutionError as e:
@@ -156,8 +158,8 @@ class MarketSimulation:
     def calc_position_size(self, timestamp, symbol, price, action):
         # Limits buy size based on ADV or maximum possible size
         if action == "BUY":
-            max_size = int(self.__ADV_limit * self.__volume_data_df.loc[timestamp, symbol])
-            possible_size = self.cash_balance // price
+            max_size = int(self.__adv_limit * self.__volume_data_df.loc[timestamp, symbol])
+            possible_size = self.cash_balance // (price * (1+self.__transaction_cost))
             return min(max_size, possible_size)
         # Sells total position if possible
         elif action == "SELL" and self.portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
