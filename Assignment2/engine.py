@@ -115,7 +115,6 @@ class MarketSimulation:
             for symbol in self.__price_data_df.columns:
                 # Skips symbols that have no data for timestamp
                 if pd.isna(getattr(market_data, symbol)):
-                    print("Skipping")
                     continue
 
                 # Creates new MarketDataPoint
@@ -140,6 +139,8 @@ class MarketSimulation:
                 size = self.calc_position_size(data_point.timestamp, data_point.symbol, data_point.price, combined_action)
                 final_signal = (combined_action, data_point.symbol, size, data_point.price)
                 self.signals.append(final_signal)
+                if size == 0:
+                    continue
                 if combined_action == "BUY":
                     self.execute_order(Order(final_signal[1], final_signal[2], final_signal[3], "OPEN"))
                 # make sure we don't sell when we have no position
