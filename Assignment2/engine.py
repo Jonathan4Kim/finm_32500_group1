@@ -61,7 +61,9 @@ class MarketSimulation:
         self.__order_retries = order_retries
         self.__adv_limit = adv_limit
         self.__transaction_cost = transaction_cost
-        self.portfolio = {}
+        self.cur_portfolio = {}
+        self.portfolio_history = []
+        self.cash_history = []
 
         # Loads market data
         raw_market_data = load_data(tickers=symbols)
@@ -89,7 +91,7 @@ class MarketSimulation:
         symbol = order.symbol
         quantity = order.quantity
         price = order.price
-        current_position = self.portfolio.get(symbol, {"quantity": 0, "avg_price": 0.0, "orders": []})
+        current_position = self.cur_portfolio.get(symbol, {"quantity": 0, "avg_price": 0.0, "orders": []})
         net_quantity = current_position["quantity"] + quantity
         current_position["avg_price"] = (current_position["avg_price"] * current_position["quantity"] + price * quantity) / (current_position["quantity"] + quantity) if net_quantity != 0 else 0
         current_position["quantity"] += quantity
@@ -98,7 +100,7 @@ class MarketSimulation:
         # Update portfolio and simulate occasional order submission failures
         for num_try in range(self.__order_retries):
             try:
-                self.portfolio[symbol] = current_position
+                self.cur_portfolio[symbol] = current_position
                 self.cash_balance -= quantity * price + self.__transaction_cost * abs(quantity * price)
                 order.status = "FILLED"
                 return
@@ -146,18 +148,21 @@ class MarketSimulation:
                 if combined_action == "BUY":
                     self.execute_order(Order(final_signal[1], final_signal[2], final_signal[3], "OPEN"))
                 # make sure we don't sell when we have no position
-                elif combined_action == "SELL" and self.portfolio.get(data_point.symbol, {"quantity": 0})["quantity"] > 0:
+                elif combined_action == "SELL" and self.cur_portfolio.get(data_point.symbol, {"quantity": 0})["quantity"] > 0:
                     self.execute_order(Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN"))
 
             # Adds NAV for current timestamp to history
             # TODO could calculate NAV in post to increase speed of sim
-            portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
+            portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.cur_portfolio.items())
             nav_history.append((market_data.Index, self.cash_balance + portfolio_value))
+            self.portfolio_history.append(self.cur_portfolio)
+            self.cash_history.append(self.cash_balance)
 
         # Packages simulation NAV
         self.NAV_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index
 
         print(f"Simulation took {(time.time() - start)/60:.2f} minutes")
+
 
     def calc_position_size(self, timestamp, symbol, price, action):
         # Limits buy size based on ADV or maximum possible size
@@ -166,6 +171,15 @@ class MarketSimulation:
             possible_size = self.cash_balance // (price * (1+self.__transaction_cost))
             return min(max_size, possible_size)
         # Sells total position if possible
-        elif action == "SELL" and self.portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
-            return self.portfolio[symbol]["quantity"]
+        elif action == "SELL" and self.cur_portfolio.get(symbol, {"quantity": 0})["quantity"] > 0:
+            return self.cur_portfolio[symbol]["quantity"]
         return 0
+
+
+    def calc_nav(self):
+        nav_history = []
+        for i, market_data in enumerate(self.__price_data_df.itertuples()):
+            portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio_history[i].items())
+            nav_history.append((market_data.Index, self.cash_history[i] + portfolio_value))
+
+        return pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])
