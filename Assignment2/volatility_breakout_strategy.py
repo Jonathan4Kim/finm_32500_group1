@@ -1,5 +1,5 @@
 from strategies import Strategy
-import statistics as stat
+import numpy as np
 from collections import deque
 
 class VolatilityBreakoutStrategy(Strategy):
@@ -8,7 +8,6 @@ class VolatilityBreakoutStrategy(Strategy):
         self.__prev_returns = {}
         self.__prev_price = {}
         self.__window = window
-        
 
     def generate_signals(self, tick):
         price, symbol = tick.price, tick.symbol
@@ -19,25 +18,24 @@ class VolatilityBreakoutStrategy(Strategy):
             self.__prev_price[symbol] = price
             return ["HOLD"]
 
-        # add new value
         prev_price = self.__prev_price[symbol]
         if prev_price == 0.0:
             return ["HOLD"]
 
-        # get daily return on prices, and update previous returns/prices
+        # compute daily return
         daily_return = (price - prev_price) / prev_price
         self.__prev_returns[symbol].append(daily_return)
         self.__prev_price[symbol] = price
 
+        # not enough history yet
         if len(self.__prev_returns[symbol]) < self.__window:
             return ["HOLD"]
-        # compute population standard deviation from current returns
-        past_vol = stat.pstdev(self.__prev_returns[symbol])
-        # TODO: signal buy if daily return is greater than rolling 20-day volatility
-        if past_vol < daily_return:
+
+        # rolling population volatility
+        past_vol = np.std(self.__prev_returns[symbol], ddof=0)
+
+        if daily_return > past_vol:
             return ["BUY"]
-        # elif past_vol > daily_return:
-        #     return ["SELL"]
         elif daily_return < -past_vol:
             return ["SELL"]
         else:
