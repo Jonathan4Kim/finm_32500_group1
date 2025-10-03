@@ -5,7 +5,6 @@ from volatility_breakout_strategy import VolatilityBreakoutStrategy
 from macd_strategy import MACDStrategy
 from rsi_strategy import RSIStrategy
 from reporting import Reporting
-import os
 
 
 def main():
@@ -16,9 +15,8 @@ def main():
     macd_strategy = MACDStrategy()
     vol_strategy = VolatilityBreakoutStrategy()
 
-    symbols = [f.replace(".parquet", "") for f in os.listdir("data") if f.endswith(".parquet")]
     strategies = (benchmark_strategy, ma_strategy, vol_strategy, macd_strategy, rsi_strategy)
-    new_sim = MarketSimulation(1_000_000, strategies, symbols=symbols)
+    new_sim = MarketSimulation(1_000_000, strategies, symbols=None) # Default behavior if none is specified is to simulate with all symbols
 
     new_sim.run_simulation()
 

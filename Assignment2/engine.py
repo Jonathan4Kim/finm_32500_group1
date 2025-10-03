@@ -49,6 +49,7 @@ from data_loader import load_data
 from models import Order, OrderError, ExecutionError, MarketDataPoint
 import logging
 import pandas as pd
+import time
 
 class MarketSimulation:
     def __init__(self, cash_balance, strategies, symbols=None, order_retries=5, adv_limit=0.10, transaction_cost=0.00):
@@ -100,13 +101,14 @@ class MarketSimulation:
                 self.portfolio[symbol] = current_position
                 self.cash_balance -= quantity * price + self.__transaction_cost * abs(quantity * price)
                 order.status = "FILLED"
-                break
+                return
             except ExecutionError as e:
                 logging.exception("ExecutionError thrown")
 
 
     def run_simulation(self):
-        # Gets market data for simulation
+        start = time.time()
+        # Gets markestart = time.time()t data for simulation
         print("Running simulation...")
         nav_history = []    # store NAV over time
         for i, market_data in enumerate(self.__price_data_df.itertuples()):
@@ -152,9 +154,10 @@ class MarketSimulation:
             portfolio_value = sum(position['quantity'] * getattr(market_data, symbol) for symbol, position in self.portfolio.items())
             nav_history.append((market_data.Index, self.cash_balance + portfolio_value))
 
-        # Packages and returns simulation NAV
+        # Packages simulation NAV
         self.NAV_series = pd.Series([v for t, v in nav_history],index=[pd.to_datetime(t) for t, v in nav_history])  # ensure datetime index
 
+        print(f"Simulation took {(time.time() - start)/60:.2f} minutes")
 
     def calc_position_size(self, timestamp, symbol, price, action):
         # Limits buy size based on ADV or maximum possible size
