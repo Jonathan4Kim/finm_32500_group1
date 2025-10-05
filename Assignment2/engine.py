@@ -57,7 +57,7 @@ class MarketSimulation:
         self.cash_balance = cash_balance
         self.NAV_series = pd.Series()
         self.strategies = strategies
-        self.signals = []
+        self.signals = {}
         self.__order_retries = order_retries
         self.__adv_limit = adv_limit
         self.__transaction_cost = transaction_cost
@@ -141,15 +141,15 @@ class MarketSimulation:
 
                 # Generate final signal and order object
                 size = self.calc_position_size(data_point.timestamp, data_point.symbol, data_point.price, combined_action)
-                final_signal = (combined_action, data_point.symbol, size, data_point.price)
-                self.signals.append(final_signal)
+                final_signal = {"action": combined_action, "symbol": data_point.symbol, "size": size, "price": data_point.price}
+                self.signals[market_data.Index] = self.signals.get(market_data.Index, []) + [final_signal]
                 if size == 0:
                     continue
                 if combined_action == "BUY":
-                    self.execute_order(Order(final_signal[1], final_signal[2], final_signal[3], "OPEN"))
+                    self.execute_order(Order(final_signal["symbol"], final_signal["size"], final_signal["price"], "OPEN"))
                 # make sure we don't sell when we have no position
                 elif combined_action == "SELL" and self.cur_portfolio.get(data_point.symbol, {"quantity": 0})["quantity"] > 0:
-                    self.execute_order(Order(final_signal[1], -1*final_signal[2], final_signal[3], "OPEN"))
+                    self.execute_order(Order(final_signal["symbol"], -1*final_signal["size"], final_signal["price"], "OPEN"))
 
             # Adds NAV for current timestamp to history
             # TODO could calculate NAV in post to increase speed of sim
