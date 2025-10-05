@@ -1,5 +1,7 @@
 .venv/
 .idea
+**/__pycache__/
+
 
 # Assignment 2
 Assignment2/data
