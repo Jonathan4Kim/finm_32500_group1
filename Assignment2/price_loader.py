@@ -82,6 +82,8 @@ class PriceLoader:
         get_tickers() and then batches
         the tickers from yfinance. Then
         saves it from parquet.
+        
+        Space Complexity: O()
         """
         # create directory
         if not os.path.exists("data/"):
