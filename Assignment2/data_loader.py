@@ -23,6 +23,7 @@ Example usage:
     df = load_data(tickers=["AAPL", "NVDA"])
     prices = df["Close"]
     volumes = df["Volume"]
+
 """
 
 import os
@@ -31,6 +32,7 @@ import pandas as pd
 
 def load_data(tickers=None):
     print("Loading data...")
+    # Initialize array/list: 
     data_frames = []
     for _, _, paths in os.walk("data/"):
         for path in paths:
