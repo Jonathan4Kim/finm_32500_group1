@@ -1,12 +1,9 @@
-"""_summary_
-"""
-from data_loader import load_data
+from Assignment3.data_loader import load_data
 import matplotlib.pyplot as plt
-from strategies import Strategy, NaiveMovingAverageStrategy, WindowedMovingAverageStrategy
+from Assignment3.strategies import Strategy, NaiveMovingAverageStrategy, WindowedMovingAverageStrategy
 import time
 import tracemalloc
 import os
-
 
 
 def get_runtime_and_memory(strategy: Strategy, ticks: list[int]):
@@ -14,8 +11,6 @@ def get_runtime_and_memory(strategy: Strategy, ticks: list[int]):
     data = load_data()
     for tick in ticks:
         curr_data = data[:tick]
-        # runtime.append(timeit.timeit(stmt=f"for data_point in curr_data: strategy.generate_signals(data_point)", 
-        #                             setup=f"data={data}; strategy={strategy}; tick={tick}; curr_data={curr_data}", number=1))
         tracemalloc.start()
         start = time.time()
         for data_point in curr_data: 
@@ -26,6 +21,7 @@ def get_runtime_and_memory(strategy: Strategy, ticks: list[int]):
         runtime.append(end - start)
 
     return runtime, memory
+
 
 def plot_strategy_performance(ticks: list[int], values, name, is_runtime=True):
     # Convert memory from bytes to MB for readability
@@ -81,8 +77,6 @@ def main():
         print(memory)
         plot_strategy_performance(ticks, runtime, name, is_runtime=True)
         plot_strategy_performance(ticks, memory, name, is_runtime=False)
-
-
 
 
 if __name__ == "__main__":

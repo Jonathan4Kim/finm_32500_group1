@@ -22,12 +22,7 @@ We evaluate **runtime performance**, **memory usage**, and **theoretical complex
 ### 2. WindowedMovingAverageStrategy
 - **Description:** Maintains fixed-size buffer for sliding average.  
 - **Time Complexity:** O(1) per tick → O(n) overall  
-- **Space Complexity:** O(k) (buffer of window size k)  
-
-### 3. Optimized Naive Strategy (Optional)
-- **Description:** Refactored to reduce redundant recomputation.  
-- **Expected Complexity:** O(1) per tick, O(k) space  
-
+- **Space Complexity:** O(k) (buffer of window size k)
 ---
 
 ## 🧮 Theoretical Complexity Summary
@@ -36,8 +31,6 @@ We evaluate **runtime performance**, **memory usage**, and **theoretical complex
 |-------------------------------|----------------|-----------------------|-------------|
 | NaiveMovingAverageStrategy    | O(n)           | O(n²)                 | O(n)        |
 | WindowedMovingAverageStrategy | O(1)           | O(n)                  | O(k)        |
-| Optimized Naive (refactored)  | O(1)           | O(n)                  | O(k)        |
-
 ---
 
 ## 📊 Profiling & Benchmarking
@@ -46,25 +39,25 @@ We evaluate **runtime performance**, **memory usage**, and **theoretical complex
 
 | Strategy                     | 1,000 ticks | 10,000 ticks | 100,000 ticks |
 |------------------------------|-------------|--------------|---------------|
-| NaiveMovingAverageStrategy   |             |              |               |
-| WindowedMovingAverageStrategy|             |              |               |
-| Optimized Naive              |             |              |               |
+| NaiveMovingAverageStrategy   |0.01917600   |0.2089323     |2.18418240     |
+| WindowedMovingAverageStrategy|0.00906944   |0.10207295    |0.93876433     |
 
-### Memory Usage Results (MB)
+### Memory Usage Results (KiB)
 
 | Strategy                     | 1,000 ticks | 10,000 ticks | 100,000 ticks |
 |------------------------------|-------------|--------------|---------------|
-| NaiveMovingAverageStrategy   |             |              |               |
-| WindowedMovingAverageStrategy|             |              |               |
-| Optimized Naive              |             |              |               |
+| NaiveMovingAverageStrategy   |0.000288     |0.080428      |0.880356       |
+| WindowedMovingAverageStrategy|23.057164    |23.11152      |23.903596      |
 
 ---
 
 ## 📈 Visualizations
 - **Runtime Scaling Plot**: Runtime vs. input size (log-log or linear)  
 - **Memory Scaling Plot**: Memory usage vs. input size  
-
-*(Insert plots generated via `reporting.py` here, e.g. `plots/runtime_plot.png` and `plots/memory_plot.png`)*
+  <img alt="Naive_MAC_runtime_plot" height="300" src="plots\Naive_MAC_runtime_plot.png"/>
+  <img alt="Windowed_MAC_runtime_ploy" height="300" src="plots\Windowed_MAC_runtime_plot.png"/>
+  <img alt="Naive_MAC_memory_plot" height="300" src="plots\Naive_MAC_memory_plot.png"/>
+  <img alt="Windowed_MAC_memory_plot" height="300" src="plots\Windowed_MAC_memory_plot.png"/>
 
 ---
 

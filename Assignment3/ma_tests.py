@@ -1,16 +1,13 @@
 import unittest
-import sys
-from data_loader import load_data
-from strategies import NaiveMovingAverageStrategy, WindowedMovingAverageStrategy
-from models import MarketDataPoint
+from Assignment3.data_loader import load_data
+from Assignment3.strategies import NaiveMovingAverageStrategy, WindowedMovingAverageStrategy
 from datetime import datetime
-from models import MarketDataPoint
+from Assignment3.models import MarketDataPoint
 import time
 import tracemalloc
 import cProfile
 import io
 import pstats
-
 
 
 class NaiveMACTestCase(unittest.TestCase):
@@ -25,7 +22,8 @@ class NaiveMACTestCase(unittest.TestCase):
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
-    
+
+
     def test_buy_signal(self):
         # create strategy and prices that are oriented towards buy signal
         strategy = NaiveMovingAverageStrategy(2, 5)
@@ -35,7 +33,8 @@ class NaiveMACTestCase(unittest.TestCase):
             mdp = MarketDataPoint(datetime.now(), "MSFT", price)
             signal = strategy.generate_signals(mdp)
         self.assertEqual(signal, ["BUY"])
-    
+
+
     def test_sell_signal(self):
         # get strategy, prices, and reverse
         strategy = NaiveMovingAverageStrategy(2, 5)
@@ -59,7 +58,8 @@ class WindowedMACTestCase(unittest.TestCase):
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
         self.assertTrue(strategy.generate_signals(mdp), ["HOLD"])
-    
+
+
     def test_buy_signal(self):
         # create strategy and prices that are oriented towards buy signal
         strategy = WindowedMovingAverageStrategy(2, 5)
@@ -69,7 +69,8 @@ class WindowedMACTestCase(unittest.TestCase):
             mdp = MarketDataPoint(datetime.now(), "MSFT", price)
             signal = strategy.generate_signals(mdp)
         self.assertEqual(signal, ["BUY"])
-    
+
+
     def test_sell_signal(self):
         # create strategy and prices that are oriented towards sel signal
         strategy = WindowedMovingAverageStrategy(2, 5)
@@ -80,6 +81,7 @@ class WindowedMACTestCase(unittest.TestCase):
             mdp = MarketDataPoint(datetime.now(), "MSFT", price)
             signal = strategy.generate_signals(mdp)
         self.assertEqual(signal, ["SELL"])
+
 
     def test_speed_100k(self):
         # create strategy and load data
@@ -96,7 +98,8 @@ class WindowedMACTestCase(unittest.TestCase):
         # get actual time for execution and test
         total_time = end - start
         self.assertTrue(total_time < 1.0)
-    
+
+
     def test_memory_100k(self):
         # create strategy and load data
         strategy = WindowedMovingAverageStrategy(2, 5)
@@ -107,7 +110,8 @@ class WindowedMACTestCase(unittest.TestCase):
             strategy.generate_signals(mdp)
         _, peak = tracemalloc.get_traced_memory()
         self.assertTrue(peak / 10**6 < 100)
-        
+
+
     def test_profiling_hotspots(self):
         # create strategy and load data
         strategy = WindowedMovingAverageStrategy(2, 5)
@@ -127,7 +131,8 @@ class WindowedMACTestCase(unittest.TestCase):
         output = s.getvalue()
         
         self.assertIn("generate_signals", output)
-    
+
+
     def test_profiling_memory_peaks(self):
         # get strategy and load data
         strategy = WindowedMovingAverageStrategy(2, 5)

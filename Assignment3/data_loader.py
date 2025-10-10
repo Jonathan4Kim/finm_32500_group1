@@ -13,7 +13,7 @@ a list to be returned by the function
 # imports
 import csv
 from datetime import datetime
-from models import MarketDataPoint
+from Assignment3.models import MarketDataPoint
 
 
 def load_data():
@@ -37,7 +37,7 @@ l
     data_points = []
 
     # open the csv file O(1)
-    with open('market_data.csv', newline="") as csvfile:
+    with open('Assignment3/market_data.csv', newline="") as csvfile:
         # create a reader using csv import for iteration O(1)
         reader = csv.reader(csvfile)
         # move to the next line to avoid column headers (which should be ignored) O(1)
