@@ -42,7 +42,7 @@ We evaluate **runtime performance**, **memory usage**, and **theoretical complex
 | NaiveMovingAverageStrategy   |0.01917600   |0.2089323     |2.18418240     |
 | WindowedMovingAverageStrategy|0.00906944   |0.10207295    |0.93876433     |
 
-### Memory Usage Results (KiB)
+### Memory Usage Results (MB)
 
 | Strategy                     | 1,000 ticks | 10,000 ticks | 100,000 ticks |
 |------------------------------|-------------|--------------|---------------|
