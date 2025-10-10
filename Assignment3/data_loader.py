@@ -37,7 +37,7 @@ l
     data_points = []
 
     # open the csv file O(1)
-    with open('Assignment3/market_data.csv', newline="") as csvfile:
+    with open('market_data.csv', newline="") as csvfile:
         # create a reader using csv import for iteration O(1)
         reader = csv.reader(csvfile)
         # move to the next line to avoid column headers (which should be ignored) O(1)
