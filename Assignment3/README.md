@@ -104,6 +104,20 @@ pytest -v ma_tests.py
 ## See complexity_report.md for full breakdown of strategies, runtime, space complexity, and results
 
 ---
+| File                   | Descriptions                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `data_generator.py`    | Generates simulated market data and saves it to CSV.                                                                 |
+| `data_loader.py`       | Loads CSV market data into `MarketDataPoint` objects.                                                                |
+| `strategies.py`        | Defines the abstract Strategy class and implements `NaiveMovingAverageStrategy` and `WindowedMovingAverageStrategy`. |
+| `profiler.py`          | Profiles runtime and memory usage of strategies and generates performance plots.                                     |
+| `ma_tests.py`          | Unit tests and performance tests for moving average strategies.                                                      |
+| `models.py`            | Defines `MarketDataPoint` and `Order` dataclasses.                                                                   |
+| `market_data.csv`      | Generated market data CSV for testing strategies.                                                                    |
+| `complexity_report.md` | Summary of strategy runtime, memory usage, and scalability analysis.                                                 |
+| `plots/`               | Contains runtime and memory usage plots for each strategy.                                                           |
+| `README.md`            | Project overview, setup instructions, and usage guide.                                                               |
+
+---
 ## 📌 Requirements
 
 See `requirements.txt` for full list, but major dependencies include:
