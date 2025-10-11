@@ -4,7 +4,7 @@ This project for **FINM 32500** analyzes how algorithmic design choices affect e
 
 The goal is to understand how different approaches to signal processing and trading logic affect **execution time**, **memory usage**, and **scalability** in real-world financial data applications.
 
---
+---
 
 ## 📁 Project Structure
 
