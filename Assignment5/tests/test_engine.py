@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 from backtester.engine import Backtester
 
-# example
+
 def test_engine_uses_tminus1_signal(prices, broker, strategy, monkeypatch):
     # Force exactly one buy at t=10 by controlling signals
     fake_strategy = MagicMock()
@@ -15,11 +15,8 @@ def test_engine_uses_tminus1_signal(prices, broker, strategy, monkeypatch):
     assert broker.cash == 1000 - float(prices.iloc[10])
 
 
-# ---------------------------------------------------------------------
-# Engine loop: executes trades and equity consistency
-# ---------------------------------------------------------------------
 def test_engine_no_trades(prices, broker, strategy):
-    # Force exactly one buy at t=10 by controlling signals
+    # Force zero by controlling signals
     fake_strategy = MagicMock()
     fake_strategy.signals = prices * 0
     bt = Backtester(fake_strategy, broker)
