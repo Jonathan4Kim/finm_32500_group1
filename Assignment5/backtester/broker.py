@@ -7,17 +7,18 @@ class Broker:
         self.position = 0
 
     def market_order(self, side: str, qty: int, price: float):
+        if qty == 0 or qty is None or int(qty) != qty:
+            raise ValueError("Quantity is invalid.")
+
         if side == "buy":
             if self.cash < qty * price:
-                logging.info("Cannot make trade, insufficient funds")
-                return
-            self.position += 1
+                raise ValueError("Cannot make trade, insufficient funds")
+            self.position += qty
             self.cash -= qty * price
         elif side == "sell":
             if self.position <=0:
-                logging.info("Cannot make trade, no position to sell")
-                return
-            self.position -= 1
+                raise ValueError("Cannot make trade, no position to sell")
+            self.position -= qty
             self.cash += qty * price
         else:
-            logging.warning("Engine tried to execute invalid side value")
+            raise ValueError("Invalid side.")
