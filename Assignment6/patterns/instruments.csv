@@ -1,0 +1,5 @@
+symbol,type,price,sector,issuer,maturity
+AAPL,Stock,172.35,Technology,Apple Inc.,
+MSFT,Stock,328.10,Technology,Microsoft Corp.,
+US10Y,Bond,100.00,Government,US Treasury,2035-10-01
+SPY,ETF,430.50,Index,State Street,
