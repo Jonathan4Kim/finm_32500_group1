@@ -9,7 +9,7 @@ The project integrates **creational, structural, and behavioral patterns** acros
 
 ---
 
-## 🏗️ Creational Patterns
+## Creational Patterns
 
 ### **Factory Pattern**
 
@@ -72,7 +72,7 @@ Portfolio construction often requires chaining multiple configuration steps (pos
 
 ---
 
-## 🧱 Structural Patterns
+## Structural Patterns
 
 ### **Decorator Pattern**
 
@@ -137,7 +137,7 @@ Portfolios often have hierarchical structures. The composite pattern allows unif
 
 ---
 
-## 🔁 Behavioral Patterns
+## Behavioral Patterns
 
 ### **Strategy Pattern**
 
@@ -202,7 +202,7 @@ Trading operations must be reversible for simulation accuracy. Commands encapsul
 
 ---
 
-## 🧪 Testing and Validation
+## Testing and Validation
 
 Comprehensive unit tests verify:
 
@@ -236,7 +236,7 @@ pytest tests/
 
 ---
 
-## 🧩 Integration Summary
+## Integration Summary
 
 The system combines these patterns to form a cohesive workflow:
 
