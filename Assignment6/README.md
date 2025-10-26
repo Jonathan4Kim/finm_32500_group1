@@ -17,7 +17,6 @@ This assignment delivers a modular Python platform that simulates a financial an
 - `Assignment6/patterns/` – Implementations of Factory, Builder, Singleton, Strategy, Observer, Command, and supporting abstractions.
 - `Assignment6/analytics.py` – Financial metrics (volatility, beta, drawdown) used by decorators.
 - `Assignment6/engine.py` – Trading engine that coordinates strategy evaluation and signal publication.
-- `Assignment6/reporting.py` – Observer-based logging and alerting utilities.
 - `Assignment6/tests/` – Place unit tests validating each pattern and integration flow.
 - `Assignment6/design_report.md` – Written discussion covering rationale, tradeoffs, and reflections on pattern usage.
 
@@ -41,11 +40,10 @@ This assignment delivers a modular Python platform that simulates a financial an
    ```
 
 ## Running the Simulation
-Execute the orchestrator to load configuration, ingest data, run strategies, and emit reports:
+Execute the orchestrator to load configuration, ingest data, run strategies, and emit reports via unit tests created:
 ```bash
 python -m Assignment6.main
 ```
-The console output will demonstrate instrument creation via the Factory, portfolio assembly via the Builder and Composite patterns, decorated analytics, strategy signal generation, observer notifications, and command-based trade lifecycle handling.
 
 ## Suggested Validation
 - **Unit tests:** Add or extend tests in `Assignment6/tests/` and run with `pytest Assignment6/tests`.
