@@ -162,7 +162,7 @@ Trading strategies vary widely but share a common interface for signal generatio
 
 ### **Observer Pattern**
 
-**Location:** `reporting.py`
+**Location:** `patterns/observer.py`
 **Use Case:** Event-driven signal notification for logging and alerts.
 
 **Rationale:**
@@ -220,7 +220,7 @@ pytest tests/
 
 ---
 
-## ⚖️ Summary of Tradeoffs
+## Summary of Tradeoffs
 
 | Pattern   | Key Benefit                       | Primary Tradeoff                   |
 | --------- | --------------------------------- | ---------------------------------- |
