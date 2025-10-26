@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+from Assignment6.patterns.composite import Position
+
+
 # Abstract Command
 class Command(ABC):
     @abstractmethod
@@ -21,22 +24,26 @@ class ExecuteOrderCommand(Command):
         action = self.signal['action']
         symbol = self.signal['symbol']
         quantity = self.signal['quantity']
+        price = self.signal['price']
         
         if action == "BUY":
-            self.portfolio.buy(symbol, quantity)
+            new_position = Position(symbol, quantity, price)
+            self.portfolio.add_position(new_position)
         elif action == "SELL":
-            self.portfolio.sell(symbol, quantity)
+            self.portfolio.remove_position(symbol, quantity)
     
     def undo(self):
         action = self.signal['action']
         symbol = self.signal['symbol']
         quantity = self.signal['quantity']
+        price = self.signal['price']
         
         # Reverse the action
         if action == "BUY":
-            self.portfolio.sell(symbol, quantity)
+            self.portfolio.remove_position(symbol, quantity)
         elif action == "SELL":
-            self.portfolio.buy(symbol, quantity)
+            new_position = Position(symbol, quantity, price)
+            self.portfolio.add_position(new_position)
 
 
 # Undo Order Command 

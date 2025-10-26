@@ -39,6 +39,22 @@ class PortfolioGroup(PortfolioComponent):
     def add_position(self, position: Position):
         self.positions.append(position)
 
+    def remove_position(self, symbol: str, quantity: float):
+        # Try to sell from current portfolio positions
+        for position in list(self.positions):  # copy since we may modify
+            if position.symbol == symbol:
+                if quantity >= position.quantity:
+                    # Sell all — remove the position completely
+                    self.positions.remove(position)
+                    return True
+                else:
+                    # Partial sale — reduce quantity
+                    position.quantity -= quantity
+                    return True
+
+        # Symbol not found anywhere
+        return False
+
     def add_sub_portfolio(self, sub_portfolio: "PortfolioGroup"):
         self.sub_portfolios.append(sub_portfolio)
 

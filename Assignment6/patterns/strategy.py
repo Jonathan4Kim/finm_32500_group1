@@ -64,7 +64,7 @@ class MeanReversionStrategy(Strategy):
         
         # STEP 1: Initialize history for new symbol
         if symbol not in self.price_history:
-            self.price_history[symbol] = deque(maxlen=self.lookback_window)
+            self.price_history[symbol] = deque(maxlen=self.lookback_window+1)
         
         # STEP 2: Add current price to history
         self.price_history[symbol].append(price)
@@ -83,9 +83,9 @@ class MeanReversionStrategy(Strategy):
         # STEP 6: Generate signals based on deviation
         if deviation > self.threshold:
             # Price too high → SELL
-            return [{"action": "SELL", "symbol": symbol, "quantity": 100}]
+            return [{"action": "SELL", "symbol": symbol, "quantity": 100, "price": price}]
         elif deviation < -self.threshold:
             # Price too low → BUY
-            return [{"action": "BUY", "symbol": symbol, "quantity": 100}]
+            return [{"action": "BUY", "symbol": symbol, "quantity": 100, "price": price}]
         
         return []
