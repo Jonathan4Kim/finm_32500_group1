@@ -3,7 +3,7 @@ from datetime import datetime
 from Assignment6.patterns.strategy import Strategy, MeanReversionStrategy
 from Assignment6.patterns.observer import SignalPublisher, AlertObserver
 from Assignment6.patterns.command import CommandInvoker, ExecuteOrderCommand
-from Assignment6.patterns.composite import PortfolioGroup
+from Assignment6.models import PortfolioGroup
 from Assignment6.models import MarketDataPoint
 
 

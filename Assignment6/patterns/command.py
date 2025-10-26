@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from Assignment6.patterns.composite import Position
+from Assignment6.models import Position
 
 
 # Abstract Command
