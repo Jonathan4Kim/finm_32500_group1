@@ -42,7 +42,7 @@ This assignment delivers a modular Python platform that simulates a financial an
 ## Running the Simulation
 Execute the orchestrator to load configuration, ingest data, run strategies, and emit reports via unit tests created:
 ```bash
-python -m Assignment6.main
+python -m main
 ```
 
 ## Suggested Validation

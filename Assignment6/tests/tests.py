@@ -49,7 +49,7 @@ class TestInstrumentFactory(unittest.TestCase):
         self.assertEqual(bond.maturity, "2035-10-01")
 
 
-# Singleton Pattern Tests
+# Singleton Pattern tests
 
 class TestSingleton(unittest.TestCase):
 
@@ -64,7 +64,7 @@ class TestSingleton(unittest.TestCase):
         self.assertEqual(c1.default_strategy, "MeanReversionStrategy")
 
 
-# Builder Pattern Tests
+# Builder Pattern tests
 
 class TestPortfolioBuilder(unittest.TestCase):
 
@@ -135,7 +135,7 @@ class TestPortfolioBuilder(unittest.TestCase):
         self.assertEqual(len(portfolio.positions), 1)
 
 
-# Decorator Pattern Tests
+# Decorator Pattern tests
 
 class TestInstrumentDecorators(unittest.TestCase):
     def setUp(self):
@@ -190,7 +190,7 @@ class TestInstrumentDecorators(unittest.TestCase):
         self.assertTrue(isinstance(metrics["beta"], float) or metrics["beta"] == "N/A")
 
 
-# Data Loader Tests (Adapter)
+# Data Loader tests (Adapter)
 
 class TestDataLoader(unittest.TestCase):
 
@@ -206,7 +206,7 @@ class TestDataLoader(unittest.TestCase):
         self.assertEqual(data[1]["symbol"], "MSFT")
 
 
-# Composite Pattern Tests
+# Composite Pattern tests
 
 class TestPortfolioSystem(unittest.TestCase):
     def setUp(self):
@@ -292,7 +292,7 @@ class TestPortfolioSystem(unittest.TestCase):
         self.assertIn("Child", [sp.name for sp in built.sub_portfolios])
 
 
-# Strategy Pattern Tests
+# Strategy Pattern tests
 
 class TestStrategyPattern(unittest.TestCase):
 
@@ -327,7 +327,7 @@ class TestStrategyPattern(unittest.TestCase):
         self.assertEqual(signals[0]["action"], "SELL")
 
 
-# Observer Pattern Tests 
+# Observer Pattern tests
 
 class TestObserverPattern(unittest.TestCase):
 
@@ -358,7 +358,7 @@ class TestObserverPattern(unittest.TestCase):
         self.assertIn(self.alert, self.publisher._observers)
 
 
-# Command Pattern Tests
+# Command Pattern tests
 
 class TestCommandPattern(unittest.TestCase):
 
@@ -382,7 +382,7 @@ class TestCommandPattern(unittest.TestCase):
         self.assertEqual(self.portfolio.get_positions(), ["AAPL"])
 
 
-# Engine Tests
+# Engine tests
 
 class TestEngineExecution(unittest.TestCase):
     def setUp(self):

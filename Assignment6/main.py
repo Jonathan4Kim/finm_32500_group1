@@ -12,14 +12,14 @@ def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_root)
 
-    cov = coverage.Coverage(source=["Assignment6"], omit=["*/Tests/*", "main.py"])
+    cov = coverage.Coverage(source=["Assignment6"], omit=["*/tests/*", "main.py"])
     cov.start()
 
     print("Running unit tests with coverage...\n")
 
     # Discover and run tests
     loader = unittest.TestLoader()
-    suite = loader.discover(start_dir="Tests")
+    suite = loader.discover(start_dir="tests")
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 

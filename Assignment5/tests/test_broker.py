@@ -1,7 +1,7 @@
 # tests/test_broker.py
 import pytest
 
-# Buy Tests
+# Buy tests
 
 def test_market_order_buy_updates_cash_and_position(broker):
     """Buying reduces cash and increases position."""
@@ -21,7 +21,7 @@ def test_buy_with_invalid_qty_raises_error(broker):
         with pytest.raises(ValueError, match="Quantity is invalid"):
             broker.market_order("buy", qty, 100)
 
-# Sell Tests
+# Sell tests
 
 def test_market_order_sell_updates_cash_and_position(broker):
     """Selling increases cash and decreases position."""
