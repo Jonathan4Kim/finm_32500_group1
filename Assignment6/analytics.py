@@ -2,30 +2,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import List, Optional
-
-# -------------------------------
-# Base Instrument Class
-# -------------------------------
-class Instrument(ABC):
-    def __init__(self, symbol: str, prices: List[float]):
-        self.symbol = symbol
-        self.prices = prices
-
-    @abstractmethod
-    def get_metrics(self) -> dict:
-        """Return base metrics for this instrument."""
-        pass
-
-
-class Stock(Instrument):
-    def get_metrics(self) -> dict:
-        """Return basic price information."""
-        return {
-            "symbol": self.symbol,
-            "last_price": float(self.prices[-1]) if len(self.prices) > 0 else None,
-            "num_observations": len(self.prices)
-        }
-
+from Assignment6.patterns.factory import Stock, Bond, ETF, Instrument
 
 # -------------------------------
 # Decorator Base Class

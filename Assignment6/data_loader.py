@@ -13,7 +13,7 @@ a list to be returned by the function
 # imports
 import csv
 from datetime import datetime
-from patterns.adapter import YahooFinanceAdapter, BloombergXMLAdapter
+from Assignment6.patterns.adapter import YahooFinanceAdapter, BloombergXMLAdapter
 
 
 def load_data():

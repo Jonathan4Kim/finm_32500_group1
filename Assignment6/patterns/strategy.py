@@ -25,21 +25,20 @@ class BreakoutStrategy(Strategy):
         if symbol not in self.price_history:
             self.price_history[symbol] = deque(maxlen=self.lookback_window)
         
-        # STEP 2: Add current price to history
-        self.price_history[symbol].append(price)
-        
-        # STEP 3: Check if we have enough data
+        # STEP 2: Check if we have enough data
         if len(self.price_history[symbol]) < self.lookback_window:
             return []
         
-        # STEP 4: Get the list of prices and find max/min
+        # STEP 3: Get the list of prices and find max/min
         prices_list = list(self.price_history[symbol])
         max_price = max(prices_list)
         min_price = min(prices_list)
+
+        # STEP 4: Add current price to history
+        self.price_history[symbol].append(price)
         
         # STEP 5: Check for upside breakout
         upside_breakout = (price - max_price) / max_price
-        
         if upside_breakout > self.threshold:
             return [{"action": "BUY", "symbol": symbol, "quantity": 100}]
         

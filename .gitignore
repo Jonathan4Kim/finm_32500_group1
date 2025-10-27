@@ -3,6 +3,7 @@
 **/__pycache__/
 **.pytest_cache
 .DS_Store
+.coverage
 
 
 # Assignment 2
@@ -10,3 +11,4 @@ Assignment2/data
 Assignment2/simulation.log
 
 # Assignment 3
+
