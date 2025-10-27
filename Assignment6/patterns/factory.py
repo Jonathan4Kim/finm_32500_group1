@@ -78,12 +78,12 @@ class InstrumentFactory:
         raise ValueError("Unknown Instrument Type")
     
 
-if __name__ == "__main__":
-    # read the dictionary
-    instruments = pd.read_csv("instruments.csv").to_dict(orient="records")
-    inst_factory = InstrumentFactory()
-    arr = []
-    for instrument in instruments:
-        arr.append(inst_factory.create_instrument(instrument))
-    print(len(arr))
-    
+# if __name__ == "__main__":
+#     # read the dictionary
+#     instruments = pd.read_csv("instruments.csv").to_dict(orient="records")
+#     inst_factory = InstrumentFactory()
+#     arr = []
+#     for instrument in instruments:
+#         arr.append(inst_factory.create_instrument(instrument))
+#     print(len(arr))
+#

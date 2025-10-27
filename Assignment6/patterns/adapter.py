@@ -32,21 +32,3 @@ class BloombergXMLAdapter:
             )
             return MarketDataPoint(symbol=symbol, price=price, timestamp=time)
         raise ValueError(f"Symbol {symbol} not found in Bloomberg data")
-
-
-# Demonstration of Ingestion
-if __name__ == "__main__":
-    # Initialize adapters
-    yahoo_adapter = YahooFinanceAdapter("../external_data_yahoo.json")
-    bloomberg_adapter = BloombergXMLAdapter("../external_data_bloomberg.xml")
-
-    # Ingest from Yahoo
-    print("Yahoo Finance Data:")
-
-    data_point = yahoo_adapter.get_data("AAPL")
-    print(f"AAPL: {data_point}")
-
-    # Ingest from Bloomberg
-    print("\nBloomberg Data:")
-    data_point = bloomberg_adapter.get_data("MSFT")
-    print(f"MSFT: {data_point}")

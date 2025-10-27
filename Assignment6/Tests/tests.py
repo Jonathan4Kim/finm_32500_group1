@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 from Assignment6.data_loader import load_data
 from Assignment6.models import MarketDataPoint, PortfolioGroup, build_portfolio, Position
+from Assignment6.patterns.adapter import BloombergXMLAdapter
 from Assignment6.patterns.factory import Stock, Bond, ETF, InstrumentFactory
 from Assignment6.patterns.singleton import Config
 from Assignment6.patterns.builder import Portfolio, PortfolioBuilder
@@ -12,6 +13,8 @@ from Assignment6.analytics import VolatilityDecorator, BetaDecorator, DrawdownDe
 from Assignment6.patterns.observer import SignalPublisher, LoggerObserver, AlertObserver
 from Assignment6.patterns.command import ExecuteOrderCommand, UndoOrderCommand, CommandInvoker
 from Assignment6.patterns.strategy import BreakoutStrategy, MeanReversionStrategy
+from Assignment6.engine import Engine
+from Assignment6.patterns.adapter import YahooFinanceAdapter, BloombergXMLAdapter
 
 
 # Mock classes for testing
@@ -213,7 +216,7 @@ class TestPortfolioSystem(unittest.TestCase):
         self.position_b = Position(symbol="MSFT", quantity=5, price=300.0)
 
         # Portfolio with positions
-        self.portfolio = PortfolioGroup(name="Main", owner="Cole")
+        self.portfolio = PortfolioGroup(name="Main", owner="Seb")
         self.portfolio.add_position(self.position_a)
         self.portfolio.add_position(self.position_b)
 
@@ -379,8 +382,46 @@ class TestCommandPattern(unittest.TestCase):
         self.assertEqual(self.portfolio.get_positions(), ["AAPL"])
 
 
+# Engine Tests
+
+class TestEngineExecution(unittest.TestCase):
+    def setUp(self):
+        """Set up the engine with a mean reversion strategy and empty portfolio."""
+        self.portfolio = PortfolioGroup(name="test_port", owner="eng")
+        self.strategy = MeanReversionStrategy({"lookback_window": 1, "threshold": 0.01})
+        self.engine = Engine(strategy=self.strategy, portfolio=self.portfolio)
+        self.alert_observer = AlertObserver(quantity_threshold=1)
+        self.engine.publisher.attach(self.alert_observer)
+
+        # Example market data points (big price drop to trigger mean reversion)
+        self.t1 = MarketDataPoint(timestamp=datetime(2025, 10, 26), symbol="AAPL", price=100.0)
+        self.t2 = MarketDataPoint(timestamp=datetime(2025, 10, 27), symbol="AAPL", price=2.0)
+
+    def test_engine_runs_and_executes_orders(self):
+        """Ensure engine executes trades and undo/redo functionality works."""
+        # Feed first tick — should not execute
+        executed = self.engine.on_tick(self.t1)
+        self.assertEqual(executed, [], "No trades should be executed on first tick")
+
+        # Feed second tick — should trigger mean reversion buy
+        executed2 = self.engine.on_tick(self.t2)
+        self.assertTrue(executed2, "Expected trades to be executed on second tick")
+        self.assertTrue(self.portfolio.get_positions(), "Portfolio should contain new position after trade")
+
+        # Ensure observer received alert
+        self.assertTrue(
+           len(getattr(self.alert_observer, "alerts", [])) > 0,
+            "Alert observer should receive alert signal"
+        )
+
+        # Undo last trade
+        self.engine.undo_last()
+        self.assertEqual(len(self.portfolio.get_positions()), 0, "Portfolio should be empty after undo")
+
+        # Redo last trade
+        self.engine.redo_last()
+        self.assertEqual(len(self.portfolio.get_positions()), 1, "Portfolio should restore position after redo")
+
 
 if __name__ == "__main__":
     unittest.main()
-
-#  Composite

@@ -66,6 +66,7 @@ class LoggerObserver(Observer):
             log_file: Optional file path to write logs. If None, prints to console
         """
         self.log_file = log_file
+        self.logs = []
     
     def update(self, signal: dict):
         """
@@ -78,10 +79,12 @@ class LoggerObserver(Observer):
         message = f"[{timestamp}] SIGNAL: {signal['action']} {signal['quantity']} shares of {signal['symbol']}"
         
         if self.log_file:
+            self.logs.append(message)
             with open(self.log_file, "a") as f:
                 f.write(message + "\n")
         else:
             print(message)
+            self.logs.append(message)
 
 
 # Alert
@@ -94,6 +97,7 @@ class AlertObserver(Observer):
             quantity_threshold: Alert if quantity exceeds this value
         """
         self.quantity_threshold = quantity_threshold
+        self.alerts = []
     
     def update(self, signal: dict):
         """
@@ -105,4 +109,6 @@ class AlertObserver(Observer):
         quantity = signal.get("quantity", 0)
         
         if quantity > self.quantity_threshold:
-            print(f"Large Trade Alert: {signal['action']} {quantity} shares of {signal['symbol']}")
+            message = f"Large Trade Alert: {signal['action']} {quantity} shares of {signal['symbol']}"
+            print(message)
+            self.alerts.append(message)

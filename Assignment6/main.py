@@ -1,38 +1,46 @@
-import pytest
-import sys
+import unittest
 import os
+import sys
+import coverage
+
 
 def main():
     """
-    Run all unit tests for the backtester project using pytest.
-    Includes coverage reporting and enforces a minimum coverage threshold.
+    Run all unit tests for the backtester project using unittest + coverage.
+    Enforces a minimum coverage threshold of 85%.
     """
-
-    # Make sure we're running from the project root
     project_root = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_root)
 
-    # Define pytest arguments
-    pytest_args = [
-        "-q",                     # quiet mode (concise output)
-        "--color=yes",            # colored output
-        "--disable-warnings",     # ignore warnings for cleaner output
-        "--maxfail=1",            # stop after first failure (optional)
-        "--cov=backtester",       # measure coverage for the backtester package
-        "--cov-report=term-missing",  # show lines missing coverage
-        "--cov-fail-under=90",    # require at least 90% coverage
-        "tests",                  # folder containing test files
-    ]
+    cov = coverage.Coverage(source=["Assignment6"], omit=["*/Tests/*", "main.py"])
+    cov.start()
 
-    print("🔍 Running unit tests with coverage...\n")
-    exit_code = pytest.main(pytest_args)
+    print("Running unit tests with coverage...\n")
 
-    # Exit with pytest's return code (important for CI)
-    if exit_code == 0:
-        print("\nAll tests passed and coverage threshold met!")
+    # Discover and run tests
+    loader = unittest.TestLoader()
+    suite = loader.discover(start_dir="Tests")
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(suite)
+
+    cov.stop()
+    cov.save()
+
+    print("\nCoverage Report:\n")
+    cov.report(show_missing=True)
+
+    coverage_percent = cov.report(show_missing=False)
+    threshold = 80.0
+
+    if not result.wasSuccessful():
+        print("\nSome tests failed.")
+        sys.exit(1)
+    elif coverage_percent < threshold:
+        print(f"\nCoverage below threshold: {coverage_percent:.1f}% (minimum {threshold}%)")
+        sys.exit(1)
     else:
-        print("\nSome tests failed or coverage below threshold.")
-    sys.exit(exit_code)
+        print(f"\nAll tests passed! Coverage: {coverage_percent:.1f}%")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

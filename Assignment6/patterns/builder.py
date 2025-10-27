@@ -27,19 +27,19 @@ class PortfolioBuilder:
         built_subs = [builder.build() for builder in self.subportfolios]
         return Portfolio(self.name, self.positions, built_subs, self.owner)
 
-if __name__ == "__main__":
-    with open("portfolio_structure.json", "r") as f:
-        data = json.load(f)
-
-    pb = PortfolioBuilder(data["name"])
-    for pos in data["positions"]:
-        pb.add_position(pos["symbol"], pos["quantity"], pos["price"])
-    pb.set_owner(data["owner"])
-
-    for sub in data["sub_portfolios"]:
-        sub_builder = PortfolioBuilder(sub["name"])
-        for pos in sub["positions"]:
-            sub_builder.add_position(pos["symbol"], pos["quantity"], pos["price"])
-        pb.add_subportfolio(sub_builder)
-
-    portfolio = pb.build()
+# if __name__ == "__main__":
+#     with open("portfolio_structure.json", "r") as f:
+#         data = json.load(f)
+#
+#     pb = PortfolioBuilder(data["name"])
+#     for pos in data["positions"]:
+#         pb.add_position(pos["symbol"], pos["quantity"], pos["price"])
+#     pb.set_owner(data["owner"])
+#
+#     for sub in data["sub_portfolios"]:
+#         sub_builder = PortfolioBuilder(sub["name"])
+#         for pos in sub["positions"]:
+#             sub_builder.add_position(pos["symbol"], pos["quantity"], pos["price"])
+#         pb.add_subportfolio(sub_builder)
+#
+#     portfolio = pb.build()

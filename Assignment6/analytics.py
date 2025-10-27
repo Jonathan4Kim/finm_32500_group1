@@ -105,20 +105,20 @@ class DrawdownDecorator(InstrumentDecorator):
 # -------------------------------
 # Demonstration of Stacked Decorators
 # -------------------------------
-if __name__ == "__main__":
-    np.random.seed(0)
-    stock_prices = 100 + np.cumsum(np.random.randn(252))  # Simulated daily prices
-    benchmark_prices = 100 + np.cumsum(np.random.randn(252))
-
-    stock = Stock("AAPL", stock_prices.tolist())
-
-    # Stack decorators dynamically (Volatility -> Beta -> Drawdown)
-    decorated = DrawdownDecorator(
-        BetaDecorator(
-            VolatilityDecorator(stock),
-            benchmark_prices=benchmark_prices.tolist()
-        )
-    )
-
-    print("Instrument Analytics:")
-    print(decorated.get_metrics())
+# if __name__ == "__main__":
+#     np.random.seed(0)
+#     stock_prices = 100 + np.cumsum(np.random.randn(252))  # Simulated daily prices
+#     benchmark_prices = 100 + np.cumsum(np.random.randn(252))
+#
+#     stock = Stock("AAPL", stock_prices.tolist())
+#
+#     # Stack decorators dynamically (Volatility -> Beta -> Drawdown)
+#     decorated = DrawdownDecorator(
+#         BetaDecorator(
+#             VolatilityDecorator(stock),
+#             benchmark_prices=benchmark_prices.tolist()
+#         )
+#     )
+#
+#     print("Instrument Analytics:")
+#     print(decorated.get_metrics())
