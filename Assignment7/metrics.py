@@ -1,55 +1,78 @@
 import timeit
-from data_loader import load_data_pandas, load_data_polars
 import matplotlib.pyplot as plt
+import pandas as pd
 import polars as pl
+
+from Assignment7.data_loader import load_data_pandas, load_data_polars
+
 
 NUMBER = 20
 
 
-def add_rolling_mean_pandas(df = load_data_pandas()):
+def add_rolling_mean_pandas(df: pd.DataFrame = None):
+    if df is None:
+        df = load_data_pandas()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling mean: symbol, price")
-    df["rolling_mean_20"] = df.groupby("symbol").rolling(20)["price"].mean().reset_index(drop=True)
+    df["rolling_mean_20"] = (
+        df.groupby("symbol")
+        .rolling(window=20, min_periods=1)["price"]
+        .mean()
+        .reset_index(drop=True)
+    )
     return df
 
 
-def add_rolling_mean_polars(df = load_data_polars()):
+def add_rolling_mean_polars(df: pl.DataFrame = None):
+    if df is None:
+        df = load_data_polars()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling mean: symbol, price")
     df = df.with_columns(
         pl.col("price")
-        .rolling_mean(window_size=20)
+        .rolling_mean(window_size=20, min_samples=1)
         .over("symbol")
         .alias("rolling_mean_20")
     )
     return df
 
 
-def add_rolling_std_pandas(df = load_data_pandas()):
+def add_rolling_std_pandas(df: pd.DataFrame = None):
+    if df is None:
+        df = load_data_pandas()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling std: symbol, price")
     df["rolling_std_20"] = (
         df.groupby("symbol")["price"]
-        .rolling(20)
+        .rolling(window=20, min_periods=1)
         .std()
-        .reset_index(level=0, drop=True)
+        .reset_index(drop=True)
     )
     return df
 
 
-def add_rolling_std_polars(df = load_data_polars()):
+def add_rolling_std_polars(df: pl.DataFrame = None):
+    if df is None:
+        df = load_data_polars()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling std: symbol, price")
     df = df.with_columns(
             pl.col("price")
-            .rolling_std(window_size=20)
+            .rolling_std(window_size=20, min_samples=1)
             .over("symbol")
             .alias("rolling_std_20")
         )
     return df
 
 
-def add_rolling_sharpe_pandas(df = load_data_pandas()):
+def add_rolling_sharpe_pandas(df: pd.DataFrame = None):
+    if df is None:
+        df = load_data_pandas()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling Sharpe: symbol, price")
 
@@ -57,18 +80,21 @@ def add_rolling_sharpe_pandas(df = load_data_pandas()):
     df[f"rolling_sharpe_20"] = grouped_prices.transform(
         lambda x: (
                 (x.pct_change())
-                .rolling(20)
+                .rolling(window=20, min_periods=1)
                 .mean()
                 /
                 (x.pct_change())
-                .rolling(20)
+                .rolling(window=20, min_periods=1)
                 .std()
         )
     )
     return df
 
 
-def add_rolling_sharpe_polars(df = load_data_polars()):
+def add_rolling_sharpe_polars(df: pl.DataFrame = None):
+    if df is None:
+        df = load_data_polars()
+
     if df is None or "symbol" not in df.columns or "price" not in df.columns:
         raise ValueError(f"Missing required columns for rolling Sharpe: symbol, price")
     df = (
@@ -76,9 +102,9 @@ def add_rolling_sharpe_polars(df = load_data_polars()):
         .map_groups(
             lambda group: group.with_columns([
                 ((group["price"] / group["price"].shift(1) - 1)
-                 .rolling_mean(20)
+                 .rolling_mean(window_size=20, min_samples=1)
                  / (group["price"] / group["price"].shift(1) - 1)
-                 .rolling_std(20))
+                 .rolling_std(window_size=20, min_samples=1))
                 .alias(f"rolling_sharpe_20")
             ])
         )
