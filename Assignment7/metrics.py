@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import polars as pl
 
-from Assignment7.data_loader import load_data_pandas, load_data_polars
+from data_loader import load_data_pandas, load_data_polars
 
 
 NUMBER = 20
@@ -159,7 +159,8 @@ def plot_benchmark(results):
         ax.text(i + width/2, v + 0.001, f"{v:.3f}", ha="center", fontsize=10)
 
     plt.tight_layout()
-    plt.show()
+    
+    return fig
 
 
 if __name__ == "__main__":
@@ -169,4 +170,6 @@ if __name__ == "__main__":
         print(f"{metric}: Pandas={vals['Pandas']:.6f}s, Polars={vals['Polars']:.6f}s")
 
     # Plot the results
-    plot_benchmark(results)
+    fig = plot_benchmark(results)
+    fig.savefig('benchmark_plot.png', dpi=300, bbox_inches='tight')
+    plt.show()
