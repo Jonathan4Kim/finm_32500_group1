@@ -164,21 +164,21 @@ def main():
         om_proc = mp.Process(target=_order_manager_worker, name="OrderManager")
         om_proc.start()
         processes.append(om_proc)
-        time.sleep(0.5)
+        time.sleep(5)
 
         gateway_proc = mp.Process(
             target=_gateway_worker, args=(metric_queue,), name="Gateway"
         )
         gateway_proc.start()
         processes.append(gateway_proc)
-        time.sleep(0.5)
+        time.sleep(5)
 
         orderbook_proc = mp.Process(
             target=_orderbook_worker, args=(metric_queue,), name="OrderBook"
         )
         orderbook_proc.start()
         processes.append(orderbook_proc)
-        time.sleep(0.5)
+        time.sleep(5)
 
         strategy_proc = mp.Process(
             target=_strategy_worker,
