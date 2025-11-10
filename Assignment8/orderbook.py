@@ -17,7 +17,7 @@ def get_price_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(("localhost", 9001))
     data_points = []
-    book = None  # Will initialize after receiving symbols
+    book = None
     
     while True:
         try:
@@ -35,9 +35,10 @@ def get_price_client():
                 symbols_str = response[0].split('|')[1]
                 unique_symbols = symbols_str.split(',')
                 print(f'Received symbols: {unique_symbols}')
-                
+
                 try:
-                    SharedPriceBook.unlink() 
+                    temp_book = SharedPriceBook(symbols=['DUMMY'], name='price_book', create=False)
+                    temp_book.unlink()
                     print(f"Cleaned up old shared memory segment")
                 except FileNotFoundError:
                     # Ignore if the file didn't exist
