@@ -3,7 +3,7 @@ import socket, select
 import asyncio
 from datetime import datetime
 from dataclasses import dataclass
-from shared_memory_utils import SharedPriceBook
+from shared_memory_utils import SharedPriceBook, SharedMemoryMetadata
 
 @dataclass(frozen=True)
 class MarketDataPoint:
@@ -46,6 +46,22 @@ def get_price_client():
                 except Exception as cleanup_e:
                     # Catch other potential errors during cleanup
                     print(f"Warning during cleanup: {cleanup_e}")
+
+                try:
+                    # 1. Initialize/Create the Metadata book
+                    # Note: We use the default name "trading_metadata" defined in the class
+                    metadata_book = SharedMemoryMetadata(name="trading_metadata", create=True)
+                    
+                    # 2. Write the necessary metadata (symbols list and the PriceBook name)
+                    metadata = {
+                        'symbols': unique_symbols,
+                        'price_book_name': 'price_book'
+                    }
+                    metadata_book.write(metadata)
+                    metadata_book.close() # Close connection after writing
+                    print("Symbol list written to metadata memory.")
+                except Exception as meta_e:
+                    print(f"Error writing metadata: {meta_e}")
                 
                 # Initialize SharedPriceBook with the symbol list
                 book = SharedPriceBook(symbols=unique_symbols, name='price_book', create=True)

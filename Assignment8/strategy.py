@@ -2,12 +2,15 @@ from abc import ABC, abstractmethod
 from collections import deque
 from datetime import datetime
 from dataclasses import dataclass
-from shared_memory_utils import SharedPriceBook
 import socket
 import threading
 import json
 import time
 from typing import List, Dict, Any, Optional
+
+from shared_memory_utils import SharedPriceBook, SharedMemoryMetadata
+from order_manager import OrderManagerServer, MESSAGE_DELIMITER
+
 
 @dataclass(frozen=True)
 class MarketDataPoint:
@@ -33,16 +36,10 @@ ORDER_HOST = '127.0.0.1'
 ORDER_PORT = 62000
 ORDER_DELIMITER = b'*'
 
-BOOK_NAME = 'price_book'
-
-# Strategy Parameters
-SHORT_WINDOW = 5
-LONG_WINDOW = 20
-ORDER_QTY = 100
-
 
 class Strategy(ABC):
     pass
+
 
 class _SymbolState:
     """
@@ -56,6 +53,7 @@ class _SymbolState:
         self.long_sum = 0.0
         self.short_window = s
         self.long_window = l
+
 
 class WindowedMovingAverageStrategy(Strategy):
     """
@@ -152,173 +150,151 @@ class WindowedMovingAverageStrategy(Strategy):
 
         # 4. Signal Generation (O(1) comparison)
         if short_avg > long_avg:
-            return ["BUY"]
+            return "BUY"
         elif short_avg < long_avg:
-            return ["SELL"]
+            return "SELL"
         else:
-            return ["HOLD"]
-
+            return "HOLD"
+        
 
 class SentimentStrategy(Strategy):
     
     def __init__(self):
         super().__init__()
-    
-    
-    def generate_signals(self, tick):
 
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect(("localhost", SENTIMENT_PORT))
-        sent_points = []
+    def generate_signal(self, tick: SentimentDataPoint):
+        if tick.sentiment > 50:
+            return "BUY"
+        elif tick.sentiment < 50:
+            return "SELL"
+        else:
+            return "HOLD"
+
+
+def initialize_strategy_book():
+    # 1. Attach to the Metadata Shared Memory
+    try:
+        metadata_book = SharedMemoryMetadata(name="trading_metadata", create=False)
+        metadata = metadata_book.read()
+        metadata_book.close()
         
-        while True:
-            try:
-                response = client.recv(1024)
-                if not response:
-                    break
-                
-                # Decode and split response
-                response = response.decode().split("*")[:-1]
-                print('response occurring')
-                print(response)
-                        # Parse market data point
-                sdp = SentimentDataPoint(
-                    datetime.strptime(response[0], "%Y-%m-%d %H:%M:%S"), 
-                    response[1], 
-                    float(response[2])
-                )
-                sent_points.append(sdp)
-                print('sentiment point added!')
+        # Extract the necessary data
+        symbols = metadata.get('symbols')
+        price_book_name = metadata.get('price_book_name')
+        
+        if not symbols or not price_book_name:
+            raise ValueError("Metadata is incomplete or missing.")
 
-            except Exception as e:
-                print(f'Error: {e}')
+        print(f"Symbols retrieved from metadata: {symbols}")
+        
+        # 2. Use the retrieved symbols to attach to the main SharedPriceBook
+        strategy_book = SharedPriceBook(
+            symbols=symbols,
+            name=price_book_name,
+            create=False  # Attach to existing
+        )
+        print("Strategy successfully attached to SharedPriceBook.")
+        return strategy_book
+        
+    except FileNotFoundError:
+        print("Error: Required shared memory segment not found. Check if the OrderBook process is running.")
+        return None
+    except Exception as e:
+        print(f"Initialization error: {e}")
+        return None
+    
+
+def send_order(order_dict):
+    """Utility: send a single order and return the server's ACK."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((ORDER_HOST, ORDER_PORT))
+        payload = json.dumps(order_dict).encode("utf-8") + MESSAGE_DELIMITER
+        s.sendall(payload)
+
+        # Receive until delimiter
+        data = b""
+        while MESSAGE_DELIMITER not in data:
+            chunk = s.recv(1024)
+            if not chunk:
                 break
-
-        return super().generate_signals(tick)
-    
-class MAStrategyRunner:
-    def __init__(self, book):
-        self.book = book
-        self.strategy = WindowedMovingAverageStrategy(SHORT_WINDOW, LONG_WINDOW)
-        self.order_sock: Optional[socket.socket] = None
-        self._stop_event = threading.Event()
-        # Tracks the last processed timestamp to only run the strategy on new ticks
-        self.last_processed_ts: Dict[str, str] = {}
-        
-    def connect_ordermanager(self):
-        """Connects to the Order Manager server."""
-        self.order_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.order_sock.connect((ORDER_HOST, ORDER_PORT))
-        self.order_sock.settimeout(2.0)
-        print(f"Order Manager Connected at {ORDER_HOST}:{ORDER_PORT}.")
-
-    def send_order(self, symbol: str, side: str, price: float):
-        """Formats and sends an order request to the Order Manager."""
-        if not self.order_sock: return
-        
-        order_payload = {
-            "side": side,
-            "symbol": symbol,
-            "qty": ORDER_QTY,
-            "price": price,
-            "ts": time.time(),
-        }
-        try:
-            # Order Manager expects JSON object + delimiter
-            json_order = json.dumps(order_payload).encode('utf-8')
-            self.order_sock.sendall(json_order + ORDER_DELIMITER)
-            print(f"  [ORDER SENT] {side} {ORDER_QTY} {symbol} @ {price:.2f}")
-        except Exception as e:
-            print(f"Error sending order: {e}")
-            self._stop_event.set()
-
-    def run_strategy_cycle(self):
-        """
-        Iterates over all symbols in the price book and runs the strategy
-        if the price has updated since the last run.
-        """
-        symbols = self.book.get_all_symbols()
-        
-        for symbol in symbols:
-            latest_point = self.book.get_price(symbol)
-            if not latest_point:
-                continue
-
-            # Check if this tick is newer than the last one processed
-            if latest_point.timestamp != self.last_processed_ts.get(symbol):
-                
-                # 1. Generate Signal
-                signals = self.strategy.generate_signals(latest_point)
-                
-                # 2. Execute on Signal
-                signal = signals[0]
-                
-                if signal != "HOLD":
-                    self.send_order(latest_point.symbol, signal, latest_point.price)
-                
-                # 3. Update the last processed timestamp
-                self.last_processed_ts[symbol] = latest_point.timestamp
-
-    def _run_ack_listener(self):
-        """Listens for and processes ACKs from the Order Manager."""
-        ack_buffer = b''
-        try:
-            while not self._stop_event.is_set():
-                chunk = self.order_sock.recv(RECV_BYTES)
-                if not chunk: break
-                ack_buffer += chunk
-                while ORDER_DELIMITER in ack_buffer:
-                    ack_frame, ack_buffer = ack_buffer.split(ORDER_DELIMITER, 1)
-                    ack = json.loads(ack_frame.decode('utf-8'))
-                    ok = ack.get('ok')
-                    order_id = ack.get('order', {}).get('id', 'N/A')
-                    msg = ack.get('msg', 'N/A')
-                    if ok:
-                        print(f"  [ACK] Order {order_id} OK.")
-                    else:
-                        print(f"  [REJECT] Order {order_id} Failed: {msg}")
-        except Exception:
-            pass
-        self._stop_event.set()
-
-
-    def start(self):
-        """Establishes connections and starts the strategy cycle."""
-        try:
-            self.connect_ordermanager()
-            
-            # Start ACK listener thread
-            threading.Thread(target=self._run_ack_listener, daemon=True).start()
-            
-            print(f"\n--- Strategy Runner Started ({SHORT_WINDOW}/{LONG_WINDOW} MA) ---")
-            
-            # Main strategy loop
-            while not self._stop_event.is_set():
-                self.run_strategy_cycle()
-                time.sleep(0.01) # Poll the book frequently
-                
-        except Exception as e:
-            print(f"\nStrategy Runner failed: {e}")
-        finally:
-            self.stop()
-
-    def stop(self):
-        self._stop_event.set()
-        if self.order_sock:
-            self.order_sock.close()
-        print("\nStrategy Runner Stopped.")
+            data += chunk
+        frame, *_ = data.split(MESSAGE_DELIMITER, 1)
+        return json.loads(frame.decode("utf-8"))
 
 
 if __name__ == "__main__":
-    try:
-        # Attempt to access a globally available object named 'price_book'
-        book = SharedPriceBook(name='price_book', create=False)
-    except KeyError:
-        # Create a mock book if running standalone for testing the MA logic
-        print("WARNING: 'price_book' not found in globals.")
 
-    runner = MAStrategyRunner(book)
-    try:
-        runner.start()
-    except KeyboardInterrupt:
-        runner.stop()
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("localhost", SENTIMENT_PORT))
+    sent_points = []
+
+    price_book = initialize_strategy_book()
+
+    sent_strategy = SentimentStrategy()
+    ma_strategy = WindowedMovingAverageStrategy(s=5, l=20)
+    
+    while True:
+        try:
+            response = client.recv(1024)
+            if not response:
+                break
+            
+            # Decode and split response
+            response = response.decode().split("*")[:-1]
+            print('response occurring')
+            print(response)
+            # Parse market data point
+            sdp = SentimentDataPoint(
+                datetime.strptime(response[0], "%Y-%m-%d %H:%M:%S"), 
+                response[1], 
+                float(response[2])
+            )
+            symbol = response[1]
+            sent_points.append(sdp)
+            print('sentiment point added!')
+
+            sent_signal = sent_strategy.generate_signal(sdp)
+
+            if price_book:
+                price = price_book.read(symbol)
+                tick = MarketDataPoint(
+                    datetime.strptime(response[0], "%Y-%m-%d %H:%M:%S"), 
+                    symbol, 
+                    price
+                )
+
+            ma_signal = ma_strategy.generate_signals(tick)
+
+            if sent_signal == ma_signal:
+                signal = sent_signal
+                my_order = {
+                    "side": signal,
+                    "symbol": symbol,
+                    "qty": 10,
+                    "price": price
+                }
+
+                try:
+                    print(f"Attempting to send order: {my_order}")
+                    
+                    # Call the utility function
+                    acknowledgment = send_order(my_order)
+                    
+                    # 3. Print the Server's Acknowledgment
+                    if acknowledgment.get("ok"):
+                        print("\nOrder successfully acknowledged by the server!")
+                        print(f"Server-assigned ID: {acknowledgment['order']['id']}")
+                        print(f"Full ACK details: {acknowledgment}")
+                    else:
+                        print("\nOrder rejected by the server.")
+                        print(f"Rejection details: {acknowledgment.get('error', 'No error message provided')}")
+
+                except ConnectionRefusedError:
+                    print("\nConnection Error: Could not connect to the order manager.")
+                    print(f"Please ensure the order manager server is running on {ORDER_HOST}:{ORDER_PORT}.")
+                except Exception as e:
+                    print(f"\nFatal error during order transmission: {e}")
+
+        except Exception as e:
+            print(f'Error: {e}')
+            break
