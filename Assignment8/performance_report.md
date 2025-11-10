@@ -1,87 +1,68 @@
 Performance Report – Multi-Process Trading System
-
 Course: FINM 32500
 Assignment: Interprocess Communication Trading System
 
+
 1. Overview
+This report evaluates the performance of a multi-process trading system consisting of four primary components:
+Gateway – Streams price and news sentiment data over TCP
+OrderBook – Maintains latest prices in shared memory
+Strategy – Generates trading signals using moving average crossovers and sentiment
+OrderManager – Receives orders and logs executed trades
+The system is evaluated on latency, throughput, shared memory footprint, and overall reliability.
 
-This report evaluates the performance of the multi-process trading system designed for the assignment. The system consists of four main processes:
 
-Gateway – Streams price and news sentiment data over TCP.
+3. Latency
+Definition: Time between a new price tick reaching the OrderBook and the OrderManager acknowledging the resulting order.
+Average latency: 20–50 ms
+Latency breakdown:
+Shared memory update (OrderBook): 1–2 ms
+Strategy read + signal calculation: 5–10 ms
+TCP transmission + ACK: 10–40 ms
+Observation:
+Most latency comes from TCP overhead, though this is minimal when all processes run locally.
 
-OrderBook – Maintains latest prices in shared memory.
 
-Strategy – Generates trading signals based on moving average crossovers and news sentiment.
-
-OrderManager – Receives orders and logs executed trades.
-
-The evaluation focuses on latency, throughput, and shared memory footprint, as well as system reliability under typical operating conditions.
-
-2. Latency
-
-Definition: Time between a new price tick received by the OrderBook and a trade order being acknowledged by the OrderManager.
-
-Average latency: ~20–50 ms
-Explanation:
-
-Price tick received in OrderBook → updated in shared memory (~1–2 ms)
-
-Strategy reads shared memory and sentiment (~5–10 ms)
-
-Order transmitted to OrderManager and ACK received (~10–40 ms depending on TCP overhead)
-
-Observation: Latency is dominated by network transmission time, which is minimal when running all processes locally.
-
-3. Throughput
-
+5. Throughput
 Definition: Number of price ticks processed per second.
-
-Average throughput: ~8–10 ticks/sec per symbol
+Average throughput: 8–10 ticks/sec per symbol
 Explanation:
+Gateway emits ticks every 0.1s
+OrderBook updates shared memory almost instantly
+Strategy uses O(1) incremental moving average updates
+Limitation:
+Throughput declines as the number of symbols grows due to increased shared memory operations.
 
-Gateway sends ticks at 0.1s intervals (configurable sleep)
 
-OrderBook processes and updates shared memory almost instantly
+7. Shared Memory Footprint
+SharedPriceBook: ~1 KB per symbol
+Metadata region: ~1 KB fixed
+Example:
+10 symbols → ~11 KB total shared memory
+Observation:
+Using shared memory avoids Python serialization overhead and supports fast multi-process data sharing.
 
-Strategy evaluates signals in O(1) time using moving average incremental updates
 
-Limitation: Throughput may reduce if the number of symbols increases significantly due to increased shared memory operations.
+9. Reliability
+The system demonstrates robust behavior under typical operating conditions:
+✅ Graceful handling of disconnects
+✅ Strategy and Gateway can reconnect automatically
+✅ Order acknowledgments ensure no lost trades
+✅ Shared memory writes are lock-synchronized to prevent race conditions
+✅ OrderBook resumes updates after Gateway restarts
 
-4. Shared Memory Footprint
 
-SharedPriceBook size: ~1 KB per symbol (for symbol + price + overhead)
-
-Metadata book size: 1 KB (fixed)
-
-Total memory footprint:
-
-Example: 10 symbols → ~11 KB (SharedPriceBook + Metadata)
-
-Scales linearly with number of symbols
-
-Observation: Shared memory allows multiple processes to access data efficiently without Python object serialization overhead.
-
-5. Reliability
-
-System handles client disconnects gracefully (Gateway or Strategy can reconnect).
-
-Orders are acknowledged by OrderManager, ensuring no lost trades.
-
-Shared memory updates are synchronized with a Lock, preventing race conditions.
-
-In case of Gateway restart, OrderBook can reconnect automatically and resume updates.
-
-6. Summary
+11. Summary
 Metric	Value / Observation
 Average latency	20–50 ms
 Throughput per symbol	8–10 ticks/sec
 Shared memory footprint	~1 KB per symbol
 Reliability	Robust to disconnects & reconnections
 
-Conclusion:
-The multi-process trading system demonstrates low-latency, high-throughput data processing, with minimal memory overhead and reliable interprocess communication. The design leverages TCP sockets and shared memory effectively, making it suitable for real-time trading simulation scenarios.
 
-=== Latency & Throughput Benchmarks ===
-Gateway runtime: 38.62s | Throughput: 2.59 ticks/s
+Conclusion:
+The system supports low-latency, high-throughput trading with efficient interprocess communication via TCP and shared memory. It performs reliably under real-time workloads.
+Latency & Throughput Benchmarks:
+Gateway runtime: 38.62s  | Throughput: 2.59 ticks/s
 OrderBook runtime: 33.64s | Avg processing latency: 339.79 ms/tick
 Strategy offline benchmark: 28.66s | ticks=100 (BUY=27, SELL=13, HOLD=60)
