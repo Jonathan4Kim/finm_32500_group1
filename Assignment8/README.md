@@ -111,11 +111,11 @@ pytest
 
 ## Performance & Reporting
 
-- `performance_report.md` captures measured results from the latest orchestrated run. Highlights:
-  - **Latency**: 20–50 ms from OrderBook tick receipt to OrderManager ACK (dominated by socket hops).
-  - **Throughput**: Gateway streams ~8–10 ticks/sec per symbol (0.1 s pacing) with the strategy consuming 100 ticks in 28.66 s.
-  - **Shared memory footprint**: ≈1 KB per symbol plus the fixed 1 KB metadata block (10 symbols → ~11 KB total).
-  - **Benchmarks**: Gateway runtime 38.62 s (2.59 ticks/s), OrderBook runtime 33.64 s with ~340 ms processing latency, strategy BUY/SELL/HOLD counts logged for 100 ticks.
+- `performance_report.md` captures measured results of the latest orchestrated run from the following attributes:
+  - Latency
+  - Throughput
+  - Shared memory footprint
+  - Benchmarks
 
 ## Deliverables & Verification
 
