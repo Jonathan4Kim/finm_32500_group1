@@ -80,3 +80,8 @@ Reliability	Robust to disconnects & reconnections
 
 Conclusion:
 The multi-process trading system demonstrates low-latency, high-throughput data processing, with minimal memory overhead and reliable interprocess communication. The design leverages TCP sockets and shared memory effectively, making it suitable for real-time trading simulation scenarios.
+
+=== Latency & Throughput Benchmarks ===
+Gateway runtime: 38.62s | Throughput: 2.59 ticks/s
+OrderBook runtime: 33.64s | Avg processing latency: 339.79 ms/tick
+Strategy offline benchmark: 28.66s | ticks=100 (BUY=27, SELL=13, HOLD=60)
