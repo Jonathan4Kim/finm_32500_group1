@@ -93,8 +93,3 @@ The system demonstrates stable and reliable behavior under typical operating con
 
 **Conclusion:**  
 The system achieves low-latency, high-throughput performance with efficient interprocess communication using shared memory and TCP. It is reliable and suitable for real-time trading simulation.
-
----
-
-## Latency and Throughput Benchmarks
-
