@@ -14,7 +14,7 @@ import signal
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 import gateway
 import orderbook
@@ -58,47 +58,140 @@ def _orderbook_worker(metric_queue: mp.Queue):
         )
 
 
-def _strategy_worker(metric_queue: mp.Queue, csv_path: Path):
+def _strategy_worker(metric_queue: mp.Queue, _csv_path: Path):
+    """Run the live sentiment + moving average strategy and report metrics."""
+
+    import socket
     from datetime import datetime
+
     from strategy import (
-        WindowedMovingAverageStrategy,
+        SENTIMENT_HOST,
+        SENTIMENT_PORT,
         MarketDataPoint,
+        SentimentDataPoint,
+        SentimentStrategy,
+        WindowedMovingAverageStrategy,
+        initialize_strategy_book,
+        send_order,
     )
 
     start = time.perf_counter()
-    strat = WindowedMovingAverageStrategy(s=5, l=20)
-    buys = sells = holds = 0
-    total = 0
+    buys = sells = holds = ticks_processed = 0
+    orders_submitted = orders_acknowledged = rejected_orders = 0
+    parse_errors = 0
+    last_error: Optional[str] = None
 
-    with open(csv_path, newline="") as fp:
-        reader = csv.reader(fp)
-        next(reader, None)
-        for row in reader:
-            mdp = MarketDataPoint(
-                datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S"),
-                row[1],
-                float(row[2]),
-            )
-            signal_outcome = strat.generate_signals(mdp)[0]
-            total += 1
-            if signal_outcome == "BUY":
-                buys += 1
-            elif signal_outcome == "SELL":
-                sells += 1
-            else:
-                holds += 1
+    price_book = initialize_strategy_book()
+    if price_book is None:
+        duration = time.perf_counter() - start
+        metric_queue.put(
+            {
+                "component": "strategy",
+                "duration": duration,
+                "ticks_processed": 0,
+                "buys": 0,
+                "sells": 0,
+                "holds": 0,
+                "orders_submitted": 0,
+                "orders_acknowledged": 0,
+                "rejected_orders": 0,
+                "errors": 1,
+                "last_error": "Price book unavailable",
+            }
+        )
+        return
 
-    duration = time.perf_counter() - start
-    metric_queue.put(
-        {
-            "component": "strategy",
-            "duration": duration,
-            "ticks_processed": total,
-            "buys": buys,
-            "sells": sells,
-            "holds": holds,
-        }
-    )
+    sent_strategy = SentimentStrategy()
+    ma_strategy = WindowedMovingAverageStrategy(s=5, l=20)
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+            client.connect((SENTIMENT_HOST, SENTIMENT_PORT))
+
+            while True:
+                response = client.recv(1024)
+                if not response:
+                    break
+
+                parts = response.decode().split("*")[:-1]
+                if len(parts) < 3:
+                    parse_errors += 1
+                    continue
+
+                ts_raw, symbol, sentiment_raw = parts[:3]
+
+                try:
+                    timestamp = datetime.strptime(ts_raw, "%Y-%m-%d %H:%M:%S")
+                    sentiment = float(sentiment_raw)
+                except ValueError as exc:
+                    parse_errors += 1
+                    last_error = str(exc)
+                    continue
+
+                price = price_book.read(symbol)
+                if price is None:
+                    parse_errors += 1
+                    last_error = f"No price for symbol {symbol}"
+                    continue
+
+                sdp = SentimentDataPoint(timestamp, symbol, sentiment)
+                sent_signal = sent_strategy.generate_signal(sdp)
+
+                tick = MarketDataPoint(timestamp, symbol, price)
+                ma_signal = ma_strategy.generate_signals(tick)
+                if isinstance(ma_signal, list):
+                    ma_signal = ma_signal[0] if ma_signal else "HOLD"
+
+                ticks_processed += 1
+                if ma_signal == "BUY":
+                    buys += 1
+                elif ma_signal == "SELL":
+                    sells += 1
+                else:
+                    holds += 1
+
+                if sent_signal != ma_signal:
+                    continue
+
+                my_order = {
+                    "side": sent_signal,
+                    "symbol": symbol,
+                    "qty": 10,
+                    "price": price,
+                }
+
+                try:
+                    acknowledgment = send_order(my_order)
+                    orders_submitted += 1
+                    if acknowledgment.get("ok"):
+                        orders_acknowledged += 1
+                    else:
+                        rejected_orders += 1
+                except ConnectionRefusedError as exc:
+                    last_error = f"Order manager unavailable: {exc}"
+                    parse_errors += 1
+                except Exception as exc:  # noqa: BLE001
+                    last_error = str(exc)
+                    parse_errors += 1
+    except Exception as exc:  # noqa: BLE001
+        last_error = str(exc)
+    finally:
+        duration = time.perf_counter() - start
+        metric_queue.put(
+            {
+                "component": "strategy",
+                "duration": duration,
+                "ticks_processed": ticks_processed,
+                "buys": buys,
+                "sells": sells,
+                "holds": holds,
+                "orders_submitted": orders_submitted,
+                "orders_acknowledged": orders_acknowledged,
+                "rejected_orders": rejected_orders,
+                "errors": parse_errors,
+                "last_error": last_error,
+            }
+        )
 
 
 def _collect_metrics(
