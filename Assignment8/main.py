@@ -63,12 +63,10 @@ def _strategy_worker(metric_queue: mp.Queue, csv_path: Path):
     from strategy import (
         WindowedMovingAverageStrategy,
         MarketDataPoint,
-        SHORT_WINDOW,
-        LONG_WINDOW,
     )
 
     start = time.perf_counter()
-    strat = WindowedMovingAverageStrategy(SHORT_WINDOW, LONG_WINDOW)
+    strat = WindowedMovingAverageStrategy(s=5, l=20)
     buys = sells = holds = 0
     total = 0
 
