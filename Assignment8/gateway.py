@@ -176,7 +176,7 @@ def main():
             disconnected = []
             for client in sent_clients:
                 try:
-                    encoded_data = sent_points[i] + MESSAGE_DELIMITER
+                    encoded_data = sent_points[j] + MESSAGE_DELIMITER
                     client.send(encoded_data)
                     print(f"Sentiment data sent: {encoded_data}")
                 except Exception as e:

@@ -20,8 +20,8 @@ import gateway
 import orderbook
 from order_manager import run_ordermanager
 
+# MARKET_DATA_PATH = Path(__file__).with_name("market_data.csv")
 MARKET_DATA_PATH = Path(__file__).with_name("market_data.csv")
-
 
 def _count_market_ticks(csv_path: Path) -> int:
     with open(csv_path, newline="") as fp:
