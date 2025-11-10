@@ -221,9 +221,7 @@ def send_order(order_dict):
         frame, *_ = data.split(MESSAGE_DELIMITER, 1)
         return json.loads(frame.decode("utf-8"))
 
-
-if __name__ == "__main__":
-
+def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(("localhost", SENTIMENT_PORT))
     sent_points = []
@@ -298,3 +296,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f'Error: {e}')
             break
+
+if __name__ == "__main__":
+    main()
