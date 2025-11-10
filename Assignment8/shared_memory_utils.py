@@ -8,22 +8,6 @@ from multiprocessing import shared_memory, Lock
 import pickle
 import struct
 
-import numpy as np
-import struct
-from multiprocessing import shared_memory, Lock
-
-SYMBOL_MAX_LEN = 16    # Max characters per symbol (e.g., 'MSFT')
-MAX_SYMBOLS = 20       # Maximum number of symbols the book can hold
-PRICE_SIZE = 8         # Size of a float64 (8 bytes)
-
-# Structure of the price array: (symbol string, price float)
-DTYPE = np.dtype([
-    ('symbol', f'S{SYMBOL_MAX_LEN}'), # Byte string for symbol
-    ('price', 'f8')                    # Float64 for price
-])
-DATA_ARRAY_SIZE = DTYPE.itemsize * MAX_SYMBOLS 
-SHM_SIZE = DATA_ARRAY_SIZE
-
 
 class SharedPriceBook:
     """
@@ -38,117 +22,81 @@ class SharedPriceBook:
         shm (SharedMemory): Underlying shared memory object
         lock (Lock): Multiprocessing lock for synchronization
     """
-
-    def __init__(self, symbols: list = None, name: str = 'price_book', create: bool = False):
-        
-        self.name = name
-        self.shm = None
-        self.symbols = None
-        self.num_symbols = 0
-        self.symbol_to_index = {}
-        
-        # --- 1. CREATION LOGIC (OrderBook/Server) ---
-        if create:
-            if symbols is None:
-                 raise ValueError("Symbols list required when create=True")
-                 
-            self.symbols = symbols
-            self.num_symbols = len(symbols)
-            
-            # 1. Create the shared memory block
-            self.shm = shared_memory.SharedMemory(name=name, create=True, size=SHM_SIZE)
-            
-            # 2. Initialize the NumPy array on top of the shared memory buffer
-            self.data_array = np.ndarray(
-                shape=(MAX_SYMBOLS,), 
-                dtype=DTYPE, 
-                buffer=self.shm.buf
-            )
-
-            # 3. Write symbols and initial prices (CRITICAL STEP)
-            for i, symbol in enumerate(symbols):
-                if i < MAX_SYMBOLS:
-                    # Write symbol string (encoded) and initialize price
-                    self.data_array[i] = (symbol.encode('utf-8'), 0.0)
-                
-            self.symbol_to_index = {s: i for i, s in enumerate(self.symbols)}
-            
-            # Optional: Initialize a Lock in shared memory or a separate file
-            self.lock = Lock() 
-            print(f"SharedPriceBook '{name}' created and initialized with {self.num_symbols} symbols.")
-
-        # --- 2. CONNECTION LOGIC (Strategy/Client) ---
-        else:
-            try:
-                # 1. Connect to the existing shared memory block
-                self.shm = shared_memory.SharedMemory(name=name, create=False)
-                
-                # 2. Map the existing NumPy array
-                self.data_array = np.ndarray(
-                    shape=(MAX_SYMBOLS,), 
-                    dtype=DTYPE, 
-                    buffer=self.shm.buf
-                )
-                
-                # 3. Read symbols from memory
-                self.symbols = self._read_symbols_from_memory()
-                
-                # 4. Initialize internal attributes
-                if self.symbols:
-                    self.num_symbols = len(self.symbols)
-                    self.symbol_to_index = {s: i for i, s in enumerate(self.symbols)}
-                    print(f"Connected to SharedPriceBook '{name}' with {self.num_symbols} symbols.")
-                else:
-                    self.symbols = []
-                    self.num_symbols = 0
-                    print(f"Connected to SharedPriceBook '{name}' but found no symbols.")
-                    
-            except FileNotFoundError:
-                print(f"Error: SharedPriceBook '{name}' does not exist. Ensure OrderBook is running.")
-                self.symbols = [] # Must be an empty list, not None, for the strategy polling loop to work.
-                self.num_symbols = 0
-                return # Exit constructor early
-
-    def _read_symbols_from_memory(self) -> list:
-        """
-        Reads the list of symbols from the shared memory buffer by accessing the 
-        symbol column of the NumPy array.
-        """
-        if self.data_array is None:
-            return []
-
-        # Access the 'symbol' column of the structured NumPy array
-        # Get the non-empty, decoded list of symbols
-        raw_symbols = self.data_array['symbol']
-        
-        decoded_symbols = []
-        for sym_bytes in raw_symbols:
-            # Decode the symbol byte string and strip any trailing null bytes
-            symbol = sym_bytes.decode('utf-8').rstrip('\x00')
-            if symbol:
-                decoded_symbols.append(symbol)
-            else:
-                # Stop when we hit the first empty slot (the end of the data)
-                break 
-                
-        return decoded_symbols
     
-    def update(self, symbol: str, price: float):
-        """Update the price for a given symbol in shared memory."""
-        if not self.symbols:
-            # Cannot update if symbols haven't been loaded/created
-            return
-
-        try:
-            index = self.symbol_to_index[symbol]
+    def __init__(self, symbols, name=None, create=True):
+        """
+        Initialize the shared price book.
+        
+        Args:
+            symbols (list): List of symbol strings (e.g., ['AAPL', 'MSFT', 'GOOGL'])
+            name (str, optional): Name for the shared memory block. If None, auto-generated.
+            create (bool): If True, create new shared memory. If False, attach to existing.
+        """
+        self.symbols = symbols
+        self.symbol_to_index = {symbol: idx for idx, symbol in enumerate(symbols)}
+        self.num_symbols = len(symbols)
+        
+        # Define structured dtype: symbol (fixed string) and price (float)
+        # Using S10 for symbol names (up to 10 characters)
+        self.dtype = np.dtype([('symbol', 'S10'), ('price', 'f8')])
+        self.array_size = self.dtype.itemsize * self.num_symbols
+        
+        self.lock = Lock()
+        
+        if create:
+            # Create new shared memory block
+            self.shm = shared_memory.SharedMemory(
+                create=True,
+                size=self.array_size,
+                name=name
+            )
+            self.name = self.shm.name
             
-            # Access the price field in the NumPy structured array and update it
-            self.data_array[index]['price'] = price
+            # Initialize the numpy array in shared memory
+            self._initialize_array()
+        else:
+            # Attach to existing shared memory
+            if name is None:
+                raise ValueError("Must provide name when create=False")
+            self.name = name
+            self.shm = shared_memory.SharedMemory(name=name)
+        
+        # Create numpy array view of shared memory
+        self.prices = np.ndarray(
+            shape=(self.num_symbols,),
+            dtype=self.dtype,
+            buffer=self.shm.buf
+        )
+    
+    def _initialize_array(self):
+        """Initialize the shared memory array with default values."""
+        temp_array = np.ndarray(
+            shape=(self.num_symbols,),
+            dtype=self.dtype,
+            buffer=self.shm.buf
+        )
+        
+        for idx, symbol in enumerate(self.symbols):
+            temp_array[idx]['symbol'] = symbol.encode('utf-8')
+            temp_array[idx]['price'] = 0.0
+    
+    def update(self, symbol, price):
+        """
+        Update the price for a given symbol in shared memory.
+        
+        Args:
+            symbol (str): Trading symbol (e.g., 'AAPL')
+            price (float): New price value
             
-        except KeyError:
-            print(f"Warning: Attempted to update price for unknown symbol: {symbol}")
-        except Exception as e:
-            print(f"Error updating shared memory price: {e}")
+        Raises:
+            KeyError: If symbol is not in the price book
+        """
+        if symbol not in self.symbol_to_index:
+            raise KeyError(f"Symbol '{symbol}' not found in price book")
+        
+        with self.lock:
+            idx = self.symbol_to_index[symbol]
+            self.prices[idx]['price'] = price
     
     def read(self, symbol):
         """
@@ -196,23 +144,6 @@ class SharedPriceBook:
                     idx = self.symbol_to_index[symbol]
                     self.prices[idx]['price'] = price
     
-    def _read_symbols_from_memory(self) -> list:
-        """
-        Connects to the shared memory buffer and reads the list of symbols.
-        
-        NOTE: You must use the same format (offsets, length, encoding) 
-        that the OrderBook used to WRITE the symbols.
-        """
-        if self.shm is None:
-            return [] 
-
-        try:
-            return [] # Placeholder until implementation is complete
-        
-        except Exception as e:
-            print(f"Error reading symbols from shared memory: {e}")
-            return []
-
     def get_symbols(self):
         """
         Get the list of all symbols in the price book.
