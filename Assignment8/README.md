@@ -14,10 +14,10 @@ This folder contains our Assignment 8 submission for FINM 32500. We implemente
 
 - `gateway.py` reads `market_data.csv`, replays ticks as a random-walk, and concurrently streams per-symbol sentiment integers. It pushes framed byte messages delimited by `b'*'`.
 - `orderbook.py` subscribes to the price stream, initializes `SharedPriceBook`, and updates prices atomically so every strategy process shares the same view.
-- `strategy.py` consumes `SharedPriceBook`, listens to sentiment, runs a short/long moving-average crossover, cross-checks the news signal, and sends JSON orders to the Order Manager.
+- `strategy.py` bundles the reusable `SentimentStrategy` and `WindowedMovingAverageStrategy`, attaches to shared memory, cross-checks both signals, and sends JSON orders to the Order Manager.
 - `order_manager.py` is a multi-client TCP server that validates, logs, and acknowledges orders.
 - `shared_memory_utils.py` hosts the `SharedPriceBook` wrapper plus helper metadata utilities.
-- `main.py` is intentionally empty—per the assignment we start each process explicitly so logs stay isolated.
+- `main.py` now orchestrates the four processes end-to-end, tracking throughput/latency benchmarks for Gateway, OrderBook, and Strategy.
 
 ### Message Protocols
 
@@ -35,7 +35,8 @@ Shared memory lives under the fixed name `price_book`. Symbols are stored as a N
 |-------------------------|---------|
 | `gateway.py`            | Dual-socket TCP server for price and sentiment streams. |
 | `orderbook.py`          | Price client that hydrates and mutates shared memory. |
-| `strategy.py`           | Moving-average strategy plus order pipeline utilities. |
+| `strategy.py`           | Sentiment + moving-average strategies plus order helpers. |
+| `main.py`               | Process orchestrator that boots the stack and reports metrics. |
 | `order_manager.py`      | Threaded TCP server that validates orders and emits ACKs. |
 | `shared_memory_utils.py`| Shared memory + metadata helpers. |
 | `market_data.csv`       | Historical ticks replayed by the Gateway. |
@@ -59,7 +60,15 @@ pip install numpy pandas pytest
 
 ## Running the Stack
 
-Because `main.py` is a stub, run each component in its own terminal so you can tail the logs independently:
+`main.py` is now the preferred entry point—it launches the Order Manager, Gateway, OrderBook, and Strategy in sequence, waits for each to warm up, and prints latency/throughput metrics when the run completes:
+
+```bash
+python main.py
+```
+
+This orchestrator counts the total ticks in `market_data.csv`, streams the feed once, and gathers runtime stats from Gateway, OrderBook, and the strategy benchmark so you can track performance changes between commits.
+
+If you still prefer manual control (for example, to tail each log window independently), start every component in its own terminal:
 
 1. **Order Manager** – must start first so clients can connect.
    ```bash
@@ -100,20 +109,19 @@ The remaining test files are scaffolds ready for future connectivity, serializat
   - Price-tick → order decision latency (measure timestamps before/after `strategy.py` sends an order).
   - Gateway ticks/second throughput (count per second inside `gateway.py`).
   - Shared-memory size: `len(symbols) * (symbol bytes + float bytes)`.
-- Update the report along with screenshots or CLI snippets when you finish benchmarking.
 
 ## Deliverables & Verification
 
-- ✅ **Code** – all required modules live in this directory.
-- ✅ **Video** – `video.mp4` showcases the processes running side-by-side.
-- 🚧 **Documentation** – this README plus future updates to `performance_report.md`.
-- 🚧 **Tests** – Order Manager covered; add end-to-end and shared-memory tests before submission.
+- **Code** – all required modules live in this directory.
+- **Video** – `video.mp4` showcases the processes running side-by-side.
+- **Documentation** – this README plus future updates to `performance_report.md`.
+- **Tests** – Order Manager covered; add end-to-end and shared-memory tests before submission.
 
 ## Troubleshooting & Next Steps
 
 - If sockets refuse connections, ensure previous processes have exited so ports 9001/9002/62000 are free (`lsof -i :9001`).
 - Shared memory segments persist until unlinked; use Python REPL with `SharedPriceBook(symbols=['DUMMY'], name='price_book', create=False).unlink()` for cleanup.
-- Strategy currently expects helper methods (`get_price`, `get_all_symbols`) on the price book; implement these wrappers in `SharedPriceBook` or adjust the strategy runner accordingly.
+- When starting components manually, ensure `orderbook.py` is running before the strategy so the `trading_metadata` and `price_book` shared-memory segments exist; `main.py` already enforces this ordering.
 - Extend the placeholder tests to cover serialization, shared memory propagation, and signal logic as outlined in the assignment brief.
 
 Once the metrics and remaining tests are in place, update `performance_report.md`, regenerate the video if behavior changes, and share the repo with the TAs (`jcolli5158`, `hyoung3`).

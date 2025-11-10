@@ -4,7 +4,7 @@ import threading
 import time
 import pytest
 
-from Assignment8.order_manager import OrderManagerServer, MESSAGE_DELIMITER
+from order_manager import OrderManagerServer, MESSAGE_DELIMITER
 
 HOST = "127.0.0.1"
 PORT = 65000  # use a test port

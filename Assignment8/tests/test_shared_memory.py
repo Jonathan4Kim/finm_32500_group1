@@ -18,7 +18,12 @@ from shared_memory_utils import SharedPriceBook
 
 # Only import strategies if they exist
 try:
-    from strategy import WindowedMovingAverageStrategy, SentimentStrategy, MarketDataPoint
+    from strategy import (
+        WindowedMovingAverageStrategy,
+        SentimentStrategy,
+        MarketDataPoint,
+        SentimentDataPoint,
+    )
     STRATEGY_AVAILABLE = True
 except ImportError:
     STRATEGY_AVAILABLE = False
@@ -99,24 +104,27 @@ class TestStrategySignals(unittest.TestCase):
     def test_moving_average_buy_signal(self):
         strategy = WindowedMovingAverageStrategy(s=2, l=5)
         prices = [100, 101, 102, 103, 104, 110]
-        for p in prices:
-            tick = MarketDataPoint(datetime.now(), 'AAPL', p)
+        for price in prices:
+            tick = MarketDataPoint(datetime.now(), 'AAPL', price)
             signal = strategy.generate_signals(tick)
-        self.assertEqual(signal[0], "BUY")
+        self.assertEqual(signal, "BUY")
 
     def test_moving_average_sell_signal(self):
         strategy = WindowedMovingAverageStrategy(s=2, l=5)
         prices = [110, 109, 108, 107, 106, 100]
-        for p in prices:
-            tick = MarketDataPoint(datetime.now(), 'AAPL', p)
+        for price in prices:
+            tick = MarketDataPoint(datetime.now(), 'AAPL', price)
             signal = strategy.generate_signals(tick)
-        self.assertEqual(signal[0], "SELL")
+        self.assertEqual(signal, "SELL")
 
     def test_sentiment_signals(self):
-        s = SentimentStrategy(60, 40)
-        self.assertEqual(s.generate_signals(75)[0], "BUY")
-        self.assertEqual(s.generate_signals(25)[0], "SELL")
-        self.assertEqual(s.generate_signals(50)[0], "HOLD")
+        strategy = SentimentStrategy()
+        buy_tick = SentimentDataPoint(datetime.now(), "AAPL", 75)
+        sell_tick = SentimentDataPoint(datetime.now(), "AAPL", 25)
+        hold_tick = SentimentDataPoint(datetime.now(), "AAPL", 50)
+        self.assertEqual(strategy.generate_signal(buy_tick), "BUY")
+        self.assertEqual(strategy.generate_signal(sell_tick), "SELL")
+        self.assertEqual(strategy.generate_signal(hold_tick), "HOLD")
 
 
 class TestMessageSerialization(unittest.TestCase):
