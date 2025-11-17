@@ -1,0 +1,23 @@
+[
+    {
+        "timestamp": "2025-11-17 16:49:11",
+        "event": "OrderManager",
+        "data": {
+            "reason": "listening on 127.0.0.1:62000"
+        }
+    },
+    {
+        "timestamp": "2025-11-17 16:49:16",
+        "event": "KeyboardInterrupt",
+        "data": {
+            "reason": "stopping OrderManager..."
+        }
+    },
+    {
+        "timestamp": "2025-11-17 16:49:16",
+        "event": "OrderManager",
+        "data": {
+            "reason": "OrderManager stopped"
+        }
+    }
+]
