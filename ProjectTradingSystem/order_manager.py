@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass, asdict
 from itertools import count
 from typing import Optional, Dict, Any
+import copy
 
 from order import Order
 from risk_engine import RiskEngine
@@ -171,22 +172,26 @@ class OrderManagerServer:
             {"reason": f"Sending Order {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
         )
         response = me.simulate_execution(order)
+        filled_order = copy.deepcopy(order)
+        filled_order.qty = response["qty"] if "qty" in response else filled_order.qty
+        filled_order.price = response["price"] if "price" in response else filled_order.price
         if response["status"] == "CANCELLED":
             Logger().log(
                 "OrderManager",
-                {"reason": f"Order Cancelled {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+                {"reason": f"Order Cancelled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
             )
         elif response["status"] == "PARTIAL":
+
             self.orders.append(order)
             Logger().log(
                 "OrderManager",
-                {"reason": f"Order Partially Filled {order.id}: {order.side} {response['qty']} {order.symbol} @ {order.price:.2f}"}
+                {"reason": f"Order Partially Filled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
             )
         elif response["status"] == "FILLED":
             self.orders.append(order)
             Logger().log(
                 "OrderManager",
-                {"reason": f"Order Filled {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+                {"reason": f"Order Filled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
             )
 
         # Send ACK back
