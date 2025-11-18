@@ -1,7 +1,6 @@
 # order.py
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, asdict
-from logger import Logger
 
 
 # Order model and validation

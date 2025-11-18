@@ -1,7 +1,9 @@
 # order_manager.py
+import csv
 import json
 import socket
 import threading
+import time
 from dataclasses import dataclass, asdict
 from itertools import count
 from typing import Optional, Dict, Any
@@ -9,6 +11,7 @@ from typing import Optional, Dict, Any
 from order import Order
 from risk_engine import RiskEngine
 from logger import Logger
+from matching_engine import MatchingEngine as me
 
 
 HOST = "127.0.0.1"
@@ -33,6 +36,7 @@ class OrderManagerServer:
         self._order_id_counter = count(1)  # server-side order ids
         self._order_id_lock = threading.Lock()
         self._risk_engine = RiskEngine()
+        self.orders = []
 
 
     # Public API
@@ -162,11 +166,28 @@ class OrderManagerServer:
             return
 
         # "Execute" the order (here we just log it)
-        # TODO: send order to matching engine
         Logger().log(
             "OrderManager",
-            {"reason": f"Received Order {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+            {"reason": f"Sending Order {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
         )
+        response = me.simulate_execution(order)
+        if response["status"] == "CANCELLED":
+            Logger().log(
+                "OrderManager",
+                {"reason": f"Order Cancelled {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+            )
+        elif response["status"] == "PARTIAL":
+            self.orders.append(order)
+            Logger().log(
+                "OrderManager",
+                {"reason": f"Order Partially Filled {order.id}: {order.side} {response['qty']} {order.symbol} @ {order.price:.2f}"}
+            )
+        elif response["status"] == "FILLED":
+            self.orders.append(order)
+            Logger().log(
+                "OrderManager",
+                {"reason": f"Order Filled {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+            )
 
         # Send ACK back
         self._send_ack(conn, ok=True, order=order)
@@ -183,12 +204,50 @@ class OrderManagerServer:
         except Exception:
             pass
 
+    def save_orders_to_csv(self, filepath: str = "order_log.csv"):
+        """
+        Save a list of Order objects to a CSV file.
+
+        CSV columns:
+            id, side, symbol, qty, price, ts
+        """
+
+        # Choose column order
+        fieldnames = ["id", "side", "symbol", "qty", "price", "ts"]
+
+        # Check if file exists to determine if we should write the header
+        try:
+            file_exists = open(filepath).close() is None
+        except FileNotFoundError:
+            file_exists = False
+
+        with open(filepath, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+            # If file doesn't exist, write header first
+            if not file_exists:
+                writer.writeheader()
+
+            # Write each order
+            for i, order in enumerate(self.orders):
+                row = {
+                    "id": order.id if order.id is not None else i,
+                    "side": order.side,
+                    "symbol": order.symbol,
+                    "qty": order.qty,
+                    "price": order.price,
+                    "ts": order.ts if order.ts is not None else None,
+                }
+                writer.writerow(row)
+
+
 
 def run_ordermanager(host: str = HOST, port: int = PORT):
     server = OrderManagerServer(host, port)
     server.start()
+    Logger().save("order_manager_events.json")
+    server.save_orders_to_csv()
 
 
 if __name__ == "__main__":
     run_ordermanager()
-    Logger().save("order_manager_events.json")
