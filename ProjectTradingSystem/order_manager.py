@@ -181,7 +181,6 @@ class OrderManagerServer:
                 {"reason": f"Order Cancelled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
             )
         elif response["status"] == "PARTIAL":
-
             self.orders.append(order)
             Logger().log(
                 "OrderManager",
