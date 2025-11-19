@@ -48,7 +48,9 @@ class MAStrategy:
     
     
     def load_data(self, filepath: str) -> pd.DataFrame:
-        self.data = pd.read_csv(filepath, index_col='Datetime', parse_dates=True)
+        self.data = pd.read_csv(filepath, index_col=0, parse_dates=True)
+        if self.data.index.name is None:
+            self.data.index.name = 'Datetime'
         return self.data
     
     
@@ -156,7 +158,7 @@ class MAStrategy:
 
 class MomentumStrategy:
     """
-    Momentum Strategy (Rate of Change)
+    Momentum Strategy 
     
     Approach: Mean reversion with momentum confirmation
     Entry: Price accelerates upward (positive momentum + positive returns)
@@ -168,7 +170,7 @@ class MomentumStrategy:
         self,
         symbol: str,
         momentum_window: int = 10,
-        momentum_threshold: float = 0.01,
+        momentum_threshold: float = 0.001, # <-- Chnage threshhold for more or less signals
         position_size: int = 100
     ):
         self.symbol = symbol
