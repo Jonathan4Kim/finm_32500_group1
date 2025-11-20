@@ -2,7 +2,7 @@
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Deque, List
 import numpy as np
 
@@ -11,6 +11,13 @@ class SignalType(Enum):
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
+
+@dataclass(frozen=True)
+class MarketDataPoint:
+    # create timestamp, symbol, and price instances with established types
+    timestamp: datetime
+    symbol: str
+    price: float
 
 
 @dataclass
@@ -52,8 +59,9 @@ class MAStrategy:
         # history (optional)
         self.signals: List[Signal] = []
 
-    def on_new_bar(self, timestamp: datetime, open_p: float, high: float, low: float, close: float, volume: float) -> Optional[Signal]:
-        price = float(close)
+    def on_new_bar(self, data_point: MarketDataPoint) -> Optional[Signal]:
+        price = float(data_point.price)
+        timestamp = data_point.timestamp
 
         # update long window
         if len(self._dq_long) == self.long_w:
@@ -123,8 +131,9 @@ class MomentumStrategy:
         self.signals: List[Signal] = []
         self._prev_momentum_above = None  # track previous relation (bool or None)
 
-    def on_new_bar(self, timestamp: datetime, open_p: float, high: float, low: float, close: float, volume: float) -> Optional[Signal]:
-        price = float(close)
+    def on_new_bar(self, data_point: MarketDataPoint) -> Optional[Signal]:
+        price = float(data_point.price)
+        timestamp = data_point.timestamp
         self._dq.append(price)
 
         # need at least m_window + 1 prices to compute momentum
@@ -192,8 +201,9 @@ class StatisticalSignalStrategy:
             return None
         return (price - mean) / std
 
-    def on_new_bar(self, timestamp: datetime, open_p: float, high: float, low: float, close: float, volume: float) -> Optional[Signal]:
-        price = float(close)
+    def on_new_bar(self, data_point: MarketDataPoint) -> Optional[Signal]:
+        price = float(data_point.price)
+        timestamp = data_point.timestamp
         self._dq.append(price)
 
         if len(self._dq) < self.window:
@@ -231,3 +241,18 @@ class StatisticalSignalStrategy:
 
     def get_position_size(self) -> int:
         return self.position_size
+
+
+if __name__ == "__main__":
+    # Quick demo to validate MAStrategy generates a buy then a sell signal.
+    ma = MAStrategy(symbol="DEMO", short_window=3, long_window=5, position_size=10)
+    prices = [105, 104, 103, 102, 101, 102, 103, 104, 103, 102, 101]
+    start_ts = datetime.now()
+
+    print("Running MAStrategy demo with sample prices...")
+    for i, price in enumerate(prices):
+        ts = start_ts + timedelta(minutes=i)
+        data_point = MarketDataPoint(timestamp=ts, symbol="DEMO", price=price)
+        sig = ma.on_new_bar(data_point)
+        if sig:
+            print(f"{sig.timestamp.isoformat()} -> {sig.signal.value} {sig.symbol} @ {sig.price:.2f} ({sig.reason})")

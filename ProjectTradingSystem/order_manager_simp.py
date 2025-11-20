@@ -18,9 +18,9 @@ class OrderManager:
     It processes Order objects directly (no socket, no JSON).
     """
 
-    def __init__(self):
+    def __init__(self, risk_engine: RiskEngine):
         self._order_id_counter = count(1)
-        self._risk_engine = RiskEngine()
+        self._risk_engine = risk_engine
         self.orders = []
         self.logger = Logger()
 
@@ -142,4 +142,3 @@ if __name__ == "__main__":
     print(om.process_order(order1))
     print(om.process_order(order2))
 
-    om.save_orders_to_csv()

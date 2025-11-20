@@ -9,7 +9,7 @@ class RiskEngine:
     _lock = Lock()
 
 
-    def __new__(cls, max_order_size=1000, max_position=2000, cash_balance=10000):
+    def __new__(cls):
         """
         Thread-safe Singleton constructor.
         Ensures only one RiskEngine ever exists.
