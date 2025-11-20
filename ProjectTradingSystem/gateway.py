@@ -93,7 +93,7 @@ def log_order_event(
     row = _order_as_dict(order)
     row.update(
         {
-            "event_time": datetime.utcnow().isoformat(),
+            "event_time": datetime.now().isoformat(),
             "event_type": event_type,
             "status": status,
             "filled_qty": filled_qty,
