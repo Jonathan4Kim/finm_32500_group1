@@ -63,9 +63,6 @@ class OrderManager:
             log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
             return {"ok": False, "msg": "risk_check_failed"}
 
-        # Apply risk update
-        self._risk_engine.update_position(order)
-
         # Simulate execution via matching engine
         if self._simulated:
             response = ME.simulate_execution(order)
@@ -81,6 +78,10 @@ class OrderManager:
 
         # Log based on status
         status = response["status"]
+
+        # Apply risk/cash/position updates only on executed quantity
+        if status in ("FILLED", "PARTIAL") and filled_order.qty > 0:
+            self._risk_engine.update_position(filled_order, filled_qty=filled_order.qty)
 
         if status == "CANCELLED":
             self.logger.log(

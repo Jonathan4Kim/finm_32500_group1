@@ -9,7 +9,7 @@ class RiskEngine:
     _lock = Lock()
 
 
-    def __new__(cls, max_order_size, max_position, cash_balance):
+    def __new__(cls, max_order_size, max_position, cash_balance, max_total_buy=None, max_total_sell=None):
         """
         Thread-safe Singleton constructor.
         Ensures only one RiskEngine ever exists.
@@ -21,7 +21,14 @@ class RiskEngine:
         return cls._instance
 
 
-    def __init__(self, max_order_size=1000, max_position=2000, cash_balance=10000):
+    def __init__(
+        self,
+        max_order_size=1000,
+        max_position=2000,
+        cash_balance=10000,
+        max_total_buy=None,
+        max_total_sell=None,
+    ):
         """
         Guard against repeated initialization.
         """
@@ -31,7 +38,12 @@ class RiskEngine:
         self.max_order_size = max_order_size
         self.max_position = max_position
         self.cash_balance = cash_balance
-        self.positions = {}
+        self.max_total_buy = max_total_buy if max_total_buy is not None else float("inf")
+        self.max_total_sell = max_total_sell if max_total_sell is not None else float("inf")
+
+        self.positions = {}  # symbol -> list of orders
+        self.buy_totals = {}  # symbol -> cumulative buy qty
+        self.sell_totals = {}  # symbol -> cumulative sell qty
 
         self._initialized = True
 
@@ -47,17 +59,36 @@ class RiskEngine:
             )
             return False
 
-        # Position constraint
-        current_pos = sum(o.qty for o in self.positions.get(order.symbol, []))
-        if order.qty + current_pos > self.max_position:
+        # Net position constraint
+        current_pos = sum(o.qty if o.side == "BUY" else -o.qty for o in self.positions.get(order.symbol, []))
+        prospective_pos = current_pos + (order.qty if order.side == "BUY" else -order.qty)
+        if abs(prospective_pos) > self.max_position:
             Logger().log(
                 "OrderFailed",
-                {"reason": f"Order qty {order.qty} plus current position {current_pos} exceeds max position {self.max_position}"}
+                {"reason": f"Order would exceed max position {self.max_position} (current {current_pos})"}
             )
             return False
 
-        # Cash constraint
-        if order.qty * order.price > self.cash_balance:
+        # Total buy/sell limits (per symbol, cumulative)
+        if order.side == "BUY":
+            current_buy = self.buy_totals.get(order.symbol, 0)
+            if current_buy + order.qty > self.max_total_buy:
+                Logger().log(
+                    "OrderFailed",
+                    {"reason": f"Order exceeds max total buy {self.max_total_buy} for {order.symbol}"}
+                )
+                return False
+        else:
+            current_sell = self.sell_totals.get(order.symbol, 0)
+            if current_sell + order.qty > self.max_total_sell:
+                Logger().log(
+                    "OrderFailed",
+                    {"reason": f"Order exceeds max total sell {self.max_total_sell} for {order.symbol}"}
+                )
+                return False
+
+        # Cash constraint (buys only)
+        if order.side == "BUY" and order.qty * order.price > self.cash_balance:
             Logger().log(
                 "OrderFailed",
                 {"reason": f"Order value exceeds cash balance {self.cash_balance}"}
@@ -67,7 +98,20 @@ class RiskEngine:
         return True
 
 
-    def update_position(self, order: Order):
-        """Update internal positions if risk check passes."""
-        if self.check(order):
-            self.positions.setdefault(order.symbol, []).append(order)
+    def update_position(self, order: Order, filled_qty: int = None):
+        """Update internal positions and cash after a (possibly partial) fill."""
+        qty = order.qty if filled_qty is None else filled_qty
+        if qty <= 0:
+            return
+
+        # Update positions storage
+        self.positions.setdefault(order.symbol, []).append(
+            Order(side=order.side, symbol=order.symbol, qty=qty, price=order.price, ts=order.ts, id=order.id)
+        )
+
+        if order.side == "BUY":
+            self.buy_totals[order.symbol] = self.buy_totals.get(order.symbol, 0) + qty
+            self.cash_balance -= qty * order.price
+        else:
+            self.sell_totals[order.symbol] = self.sell_totals.get(order.symbol, 0) + qty
+            self.cash_balance += qty * order.price
