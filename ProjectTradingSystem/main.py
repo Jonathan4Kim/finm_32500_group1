@@ -3,7 +3,7 @@ from typing import Optional
 
 from gateway import load_market_data
 from order import Order
-from order_manager_simp import OrderManager
+from order_manager import OrderManager
 from strategy import MAStrategy, Signal, MarketDataPoint
 from risk_engine import RiskEngine
 

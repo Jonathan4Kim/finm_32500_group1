@@ -1,257 +1,144 @@
-# order_manager.py
-import csv
-import json
-import socket
-import threading
+# order_manager_simple.py
 import time
-from dataclasses import dataclass, asdict
-from itertools import count
-from typing import Optional, Dict, Any
+from csv import DictWriter
 import copy
+from dataclasses import asdict
+from itertools import count
+from typing import Optional
 
 from order import Order
 from risk_engine import RiskEngine
 from logger import Logger
-from matching_engine import MatchingEngine as me
+from matching_engine import MatchingEngine as ME
 
 
-HOST = "127.0.0.1"
-PORT = 62000
-BACKLOG = 10
-RECV_BYTES = 4096
-MESSAGE_DELIMITER = b"*"
-
-
-class OrderManagerServer:
+class OrderManager:
     """
-    TCP server that accepts Order messages over a socket.
-    Each message is a JSON object terminated by MESSAGE_DELIMITER (b"*").
+    A simplified single-process, synchronous Order Manager.
+    It processes Order objects directly (no socket, no JSON).
     """
 
-    def __init__(self, host: str = HOST, port: int = PORT):
-        self.host = host
-        self.port = port
-        self._srv_sock: Optional[socket.socket] = None
-        self._stop_event = threading.Event()
-        self._threads = []
-        self._order_id_counter = count(1)  # server-side order ids
-        self._order_id_lock = threading.Lock()
-        self._risk_engine = RiskEngine()
+    def __init__(self, risk_engine: RiskEngine):
+        self._order_id_counter = count(1)
+        self._risk_engine = risk_engine
         self.orders = []
+        self.logger = Logger()
 
 
-    # Public API
-    def start(self):
-        self._srv_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._srv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._srv_sock.bind((self.host, self.port))
-        self._srv_sock.listen(BACKLOG)
-        Logger().log(
-            "OrderManager",
-            {"reason": f"listening on {self.host}:{self.port}"}
-        )
+    def process_order(self, order: Order) -> dict:
+        """
+        Process a fully constructed Order object.
 
-        try:
-            while not self._stop_event.is_set():
-                self._srv_sock.settimeout(1.0)
-                try:
-                    conn, addr = self._srv_sock.accept()
-                except socket.timeout:
-                    continue
-                t = threading.Thread(
-                    target=self._handle_client, args=(conn, addr), daemon=True
-                )
-                t.start()
-                self._threads.append(t)
-        except KeyboardInterrupt:
-            Logger().log(
-                "KeyboardInterrupt",
-                {"reason": f"stopping OrderManager..."}
-            )
-        finally:
-            self.stop()
+        Example:
+            order = Order(side="BUY", symbol="AAPL", qty=10, price=170)
+            om.process_order(order)
+        """
 
-    def stop(self):
-        self._stop_event.set()
-        if self._srv_sock:
-            try:
-                self._srv_sock.close()
-            except Exception:
-                pass
-            self._srv_sock = None
-        for t in self._threads:
-            t.join(timeout=1.0)
-        Logger().log(
-            "OrderManager",
-            {"reason": f"OrderManager stopped"}
-        )
+        # Validate basic fields (optional: remove if you handle in Order class)
+        if order.side not in ("BUY", "SELL"):
+            return {"ok": False, "msg": "Invalid side (must be BUY or SELL)"}
 
-    # Internals
-    def _handle_client(self, conn: socket.socket, addr):
-        name = f"{addr[0]}:{addr[1]}"
-        Logger().log(
-            "OrderManager",
-            {"reason": f"Client connected: {name}"}
-        )
-        buffer = b""
-        try:
-            with conn:
-                conn.settimeout(2.0)
-                while not self._stop_event.is_set():
-                    try:
-                        chunk = conn.recv(RECV_BYTES)
-                    except socket.timeout:
-                        continue
-                    if not chunk:
-                        break
-                    buffer += chunk
+        if order.qty <= 0:
+            return {"ok": False, "msg": "Quantity must be > 0"}
 
-                    # Process all complete frames in buffer
-                    while True:
-                        idx = buffer.find(MESSAGE_DELIMITER)
-                        if idx == -1:
-                            break  # no full frame yet
-                        frame = buffer[:idx]
-                        buffer = buffer[idx + len(MESSAGE_DELIMITER):]
-                        if not frame.strip():
-                            continue
-                        self._process_order_frame(frame, conn)
-        except Exception as e:
-            Logger().log(
-                "OrderManager",
-                {"reason": f"Client {name} error: {e}"}
-            )
-        finally:
-            Logger().log(
-                "OrderManager",
-                {"reason": f"Client disconnected: {name}"}
-            )
+        if order.price <= 0:
+            return {"ok": False, "msg": "Price must be > 0"}
 
-    def _process_order_frame(self, frame: bytes, conn: socket.socket):
-        # Decode JSON
-        try:
-            payload = json.loads(frame.decode("utf-8"))
-        except json.JSONDecodeError as e:
-            Logger().log(
-                "OrderManager",
-                {"reason": f"Bad JSON payload: {e} | raw={frame!r}"}
-            )
-            self._send_ack(conn, ok=False, msg="bad_json")
-            return
+        # Assign timestamp if missing
+        if order.ts is None:
+            order.ts = time.time()
 
-        # Validate and normalize
-        try:
-            order = Order.from_dict(payload)
-        except ValueError as e:
-            Logger().log(
-                "OrderManager",
-                {"reason": f"Invalid order: {e} | payload={payload}"}
-            )
-            self._send_ack(conn, ok=False, msg=str(e))
-            return
-
-        # Assign server-side order id if missing
+        # Assign server order ID if missing
         if order.id is None:
-            with self._order_id_lock:
-                order.id = next(self._order_id_counter)
+            order.id = next(self._order_id_counter)
 
-        # Check if order passes checks
-        if self._risk_engine.check(order):
-            self._risk_engine.update_position(order)
-        else:
-            Logger().log(
-                "OrderManager",
-                {"reason": f"Order failed risk checks | payload={payload}"}
-            )
-            self._send_ack(conn, ok=False)
-            return
+        # Run risk checks
+        if not self._risk_engine.check(order):
+            self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
+            return {"ok": False, "msg": "risk_check_failed"}
 
-        # "Execute" the order (here we just log it)
-        Logger().log(
-            "OrderManager",
-            {"reason": f"Sending Order {order.id}: {order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
-        )
-        response = me.simulate_execution(order)
+        # Apply risk update
+        self._risk_engine.update_position(order)
+
+        # Simulate execution via matching engine
+        response = ME.simulate_execution(order)
+
+        # Build filled version (deep copy)
         filled_order = copy.deepcopy(order)
-        filled_order.qty = response["qty"] if "qty" in response else filled_order.qty
-        filled_order.price = response["price"] if "price" in response else filled_order.price
-        if response["status"] == "CANCELLED":
-            Logger().log(
+        filled_order.qty = response.get("qty", filled_order.qty)
+        filled_order.price = response.get("price", filled_order.price)
+
+        # Log based on status
+        status = response["status"]
+
+        if status == "CANCELLED":
+            self.logger.log(
                 "OrderManager",
-                {"reason": f"Order Cancelled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
+                {"reason": f"Order Cancelled {order.id}: "
+                           f"{order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
             )
-        elif response["status"] == "PARTIAL":
+
+        elif status == "PARTIAL":
             self.orders.append(order)
-            Logger().log(
+            self.logger.log(
                 "OrderManager",
-                {"reason": f"Order Partially Filled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
+                {"reason": f"Order Partially Filled {order.id}: "
+                           f"{filled_order.side} {filled_order.qty} "
+                           f"{filled_order.symbol} @ {filled_order.price:.2f}"}
             )
-        elif response["status"] == "FILLED":
+
+        elif status == "FILLED":
             self.orders.append(order)
-            Logger().log(
+            self.logger.log(
                 "OrderManager",
-                {"reason": f"Order Filled {filled_order.id}: {filled_order.side} {filled_order.qty} {filled_order.symbol} @ {filled_order.price:.2f}"}
+                {"reason": f"Order Filled {order.id}: "
+                           f"{filled_order.side} {filled_order.qty} "
+                           f"{filled_order.symbol} @ {filled_order.price:.2f}"}
             )
 
-        # Send ACK back
-        self._send_ack(conn, ok=True, order=order)
+        # Return execution summary
+        return {
+            "ok": True,
+            "status": status,
+            "order": asdict(order),
+            "filled_qty": filled_order.qty,
+            "filled_price": filled_order.price
+        }
 
 
-    def _send_ack(self, conn: socket.socket, ok: bool, order: Optional[Order] = None, msg: str = ""):
-        ack = {"ok": ok}
-        if order is not None:
-            ack["order"] = asdict(order)
-        if msg:
-            ack["msg"] = msg
-        try:
-            conn.sendall(json.dumps(ack).encode("utf-8") + MESSAGE_DELIMITER)
-        except Exception:
-            pass
-
-    def save_orders_to_csv(self, filepath: str = "order_log.csv"):
-        """
-        Save a list of Order objects to a CSV file.
-
-        CSV columns:
-            id, side, symbol, qty, price, ts
-        """
-
-        # Choose column order
+    def save_orders_to_csv(self, filepath="order_log.csv"):
         fieldnames = ["id", "side", "symbol", "qty", "price", "ts"]
 
-        # Check if file exists to determine if we should write the header
         try:
             file_exists = open(filepath).close() is None
         except FileNotFoundError:
             file_exists = False
 
-        with open(filepath, "a", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+        with open(filepath, "w", newline="") as f:
+            writer = DictWriter(f, fieldnames=fieldnames)
 
-            # If file doesn't exist, write header first
             if not file_exists:
                 writer.writeheader()
 
-            # Write each order
-            for i, order in enumerate(self.orders):
-                row = {
-                    "id": order.id if order.id is not None else i,
+            for order in self.orders:
+                writer.writerow({
+                    "id": order.id,
                     "side": order.side,
                     "symbol": order.symbol,
                     "qty": order.qty,
                     "price": order.price,
-                    "ts": order.ts if order.ts is not None else None,
-                }
-                writer.writerow(row)
+                    "ts": order.ts,
+                })
 
 
-
-def run_ordermanager(host: str = HOST, port: int = PORT):
-    server = OrderManagerServer(host, port)
-    server.start()
-    Logger().save("order_manager_events.json")
-    server.save_orders_to_csv()
-
-
+# Example usage
 if __name__ == "__main__":
-    run_ordermanager()
+    om = OrderManager()
+
+    # Construct orders directly
+    order1 = Order(side="BUY", symbol="AAPL", qty=10, price=180)
+    order2 = Order(side="SELL", symbol="TSLA", qty=3, price=240)
+
+    print(om.process_order(order1))
+    print(om.process_order(order2))
+
