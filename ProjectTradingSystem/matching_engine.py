@@ -1,7 +1,7 @@
 import random
 
 from order import Order
-from orderbook import OrderBook, DualIndexBook
+from orderbook import OrderBook
 
 
 class MatchingEngine:
@@ -17,22 +17,33 @@ class MatchingEngine:
         - 60% partial
         - 30% full
         """
-        # 1) Build synthetic orderbook around price
-        bids, asks = OrderBook.generate_orderbook(
-            reference_price=order.price,
-            levels=5,         # adjustable
-            tick_size=0.01,
-            vol_mean=100,
-            vol_std=20
-        )
+        # 1) Build synthetic orderbook around order price using new OrderBook
+        ob = OrderBook()
 
-        # 2) Determine fill price based on side
-        if order.side == "BUY":
-            # BUY marketable (hits best ask)
-            fill_price = asks.best_ask()
+        levels = 5
+        tick_size = 0.01
+        base_price = order.price
+        vol_mean = 100
+        vol_std = 20
+
+        # populate symmetric levels
+        for i in range(1, levels + 1):
+            bid_price = base_price - i * tick_size
+            ask_price = base_price + i * tick_size
+            bid_qty = max(1, int(random.gauss(vol_mean, vol_std)))
+            ask_qty = max(1, int(random.gauss(vol_mean, vol_std)))
+            ob.add_order({"order_id": 10_000 + i, "side": "BUY", "symbol": order.symbol, "price": bid_price, "qty": bid_qty})
+            ob.add_order({"order_id": 20_000 + i, "side": "SELL", "symbol": order.symbol, "price": ask_price, "qty": ask_qty})
+
+        # 2) Insert incoming order to determine best executable price via matching
+        trades = ob.add_order({"order_id": 1, "side": order.side, "symbol": order.symbol, "price": order.price, "qty": order.qty})
+        fill_price = None
+        if trades:
+            # use last trade price from simulated matching
+            fill_price = trades[-1]["price"]
         else:
-            # SELL marketable (hits best bid)
-            fill_price = bids.best_bid()
+            # fallback to top of book if no trade generated (should be rare for marketable)
+            fill_price = ob.best_ask() if order.side == "BUY" else ob.best_bid()
 
         # 3) Apply random execution outcome
         u = random.random()
