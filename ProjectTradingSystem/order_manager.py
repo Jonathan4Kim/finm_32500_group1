@@ -65,6 +65,7 @@ class OrderManager:
         if self._simulated:
             response = ME.simulate_execution(order)
         else:
+            # response = alpaca .............
             pass
         # TODO: add re
 
@@ -114,16 +115,10 @@ class OrderManager:
     def save_orders_to_csv(self, filepath="order_log.csv"):
         fieldnames = ["id", "side", "symbol", "qty", "price", "ts"]
 
-        try:
-            file_exists = open(filepath).close() is None
-        except FileNotFoundError:
-            file_exists = False
-
         with open(filepath, "w", newline="") as f:
             writer = DictWriter(f, fieldnames=fieldnames)
 
-            if not file_exists:
-                writer.writeheader()
+            writer.writeheader()
 
             for order in self.orders:
                 writer.writerow({
