@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from strategy import MAStrategy, MomentumStrategy, StatisticalSignalStrategy
 
 
@@ -11,25 +12,51 @@ def run_test(strategy_class, name, symbol, filepath):
         return False
 
     try:
-        strategy = strategy_class(symbol=symbol, position_size=100)
-
-        data = strategy.load_data(filepath)
+        # Load data
+        data = pd.read_csv(filepath, index_col=0, parse_dates=True)
         print(f"  Loaded {len(data)} rows")
 
-        signals = strategy.generate_signals()
+        # Instantiate strategy
+        strategy = strategy_class(symbol=symbol, position_size=100)
+
+        # Stream data through strategy bar-by-bar
+        signals = []
+        for idx, row in data.iterrows():
+            signal = strategy.on_new_bar(
+                timestamp=idx,
+                open_p=row['Open'],
+                high=row['High'],
+                low=row['Low'],
+                close=row['Close'],
+                volume=row['Volume']
+            )
+            if signal:
+                signals.append(signal)
+
         print(f"  Generated {len(signals)} signals")
 
-        summary = strategy.summary()
+        # Summary
+        buy_count = sum(1 for s in signals if s.signal.value == "BUY")
+        sell_count = sum(1 for s in signals if s.signal.value == "SELL")
+        summary = {
+            "symbol": symbol,
+            "strategy": name,
+            "total_signals": len(signals),
+            "buy_signals": buy_count,
+            "sell_signals": sell_count,
+        }
         print(f"  Summary: {summary}")
 
         if signals:
             first = signals[0]
-            print(f"  First signal: {first.timestamp} | {first.signal.value} @ {first.price}")
+            print(f"  First signal: {first.timestamp} | {first.signal.value} @ {first.price:.2f}")
 
         return True
 
     except Exception as e:
         print(f"  Error while running {name}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
