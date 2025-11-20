@@ -61,9 +61,10 @@ def build_market_data() -> Path:
     combined = pd.concat(frames, ignore_index=True)
     combined = combined[["Datetime", "Open", "High", "Low", "Close", "Volume", "Symbol"]]
     combined["Datetime"] = pd.to_datetime(combined["Datetime"])
-    combined.sort_values(by="Datetime", inplace=True)
-    combined.reset_index(drop=True, inplace=True)
-    combined.to_csv(OUTPUT_FILE, index=False)
+    combined.set_index('Datetime', inplace=True)
+    combined.dropna(inplace=True)
+    combined.sort_index(inplace=True)
+    combined.to_csv(OUTPUT_FILE, index=True)
     return OUTPUT_FILE
 
 
