@@ -18,9 +18,10 @@ class OrderManager:
     It processes Order objects directly (no socket, no JSON).
     """
 
-    def __init__(self, risk_engine: RiskEngine):
+    def __init__(self, risk_engine: RiskEngine, simulated: bool = False):
         self._order_id_counter = count(1)
         self._risk_engine = risk_engine
+        self._simulated = simulated
         self.orders = []
         self.logger = Logger()
 
@@ -61,7 +62,11 @@ class OrderManager:
         self._risk_engine.update_position(order)
 
         # Simulate execution via matching engine
-        response = ME.simulate_execution(order)
+        if self._simulated:
+            response = ME.simulate_execution(order)
+        else:
+            pass
+        # TODO: add re
 
         # Build filled version (deep copy)
         filled_order = copy.deepcopy(order)

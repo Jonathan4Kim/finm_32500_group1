@@ -9,7 +9,7 @@ class RiskEngine:
     _lock = Lock()
 
 
-    def __new__(cls):
+    def __new__(cls, max_order_size, max_position, cash_balance):
         """
         Thread-safe Singleton constructor.
         Ensures only one RiskEngine ever exists.
@@ -52,7 +52,7 @@ class RiskEngine:
         if order.qty + current_pos > self.max_position:
             Logger().log(
                 "OrderFailed",
-                {"reason": f"Order qty {order.qty} exceeds max position {self.max_position}"}
+                {"reason": f"Order qty {order.qty} plus current position {current_pos} exceeds max position {self.max_position}"}
             )
             return False
 

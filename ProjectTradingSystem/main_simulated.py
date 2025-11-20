@@ -1,4 +1,4 @@
-# main.py
+# main_simulated.py
 from typing import Optional
 
 from gateway import load_market_data

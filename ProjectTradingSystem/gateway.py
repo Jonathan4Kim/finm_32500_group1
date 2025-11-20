@@ -1,29 +1,42 @@
 # gateway.py
 import csv
 from datetime import datetime
-from typing import Generator, Iterable
+from typing import Generator, Optional
 
 from strategy import MarketDataPoint
 
 
-def load_market_data(csv_path: str = "market_data_trimmed.csv") -> Generator[MarketDataPoint, None, None]:
+def _parse_timestamp(ts_str: str) -> Optional[datetime]:
+    """Parse Datetime values from market_data.csv (handles timezone offsets)."""
+    ts_str = ts_str.strip()
+    try:
+        # yfinance writes ISO-like strings; allow either space or 'T' separator.
+        return datetime.fromisoformat(ts_str.replace(" ", "T"))
+    except ValueError:
+        return None
+
+
+def load_market_data(csv_path: str = "data/market_data.csv") -> Generator[MarketDataPoint, None, None]:
     """
-    Stream rows from the CSV as MarketDataPoint instances.
+    Stream rows from market_data.csv as MarketDataPoint instances.
+    Expects columns: Datetime, Open, High, Low, Close, Volume, Symbol.
     """
     with open(csv_path, newline="") as f:
-        reader: Iterable[list[str]] = csv.reader(f)
-        header_skipped = False
+        reader = csv.DictReader(f)
         for row in reader:
-            if not header_skipped:
-                header_skipped = True
+            ts_str = row.get("Datetime")
+            symbol = row.get("Symbol")
+            price_str = row.get("Close")
+            if not ts_str or not symbol or price_str is None:
                 continue
-            if len(row) < 3:
+
+            ts = _parse_timestamp(ts_str)
+            if ts is None:
                 continue
-            ts_str, symbol, price_str = row[0], row[1], row[2]
+
             try:
-                ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
                 price = float(price_str)
             except ValueError:
                 continue
-            yield MarketDataPoint(timestamp=ts, symbol=symbol, price=price)
 
+            yield MarketDataPoint(timestamp=ts, symbol=symbol, price=price)
