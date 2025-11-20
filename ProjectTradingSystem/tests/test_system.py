@@ -9,13 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gateway import load_market_data, log_order_event  # noqa: E402
-from order import Order  # noqa: E402
-from order_manager import OrderManager  # noqa: E402
-from orderbook import OrderBook  # noqa: E402
-from matching_engine import MatchingEngine  # noqa: E402
-from risk_engine import RiskEngine  # noqa: E402
-from strategy import MarketDataPoint, MAStrategy, MomentumStrategy, StatisticalSignalStrategy  # noqa: E402
+from gateway import load_market_data, log_order_event
+from order import Order
+from order_manager import OrderManager
+from orderbook import OrderBook
+from matching_engine import MatchingEngine
+from risk_engine import RiskEngine
+from strategy import MarketDataPoint, MAStrategy, MomentumStrategy, StatisticalSignalStrategy
 
 
 @pytest.fixture(autouse=True)
