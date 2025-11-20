@@ -15,4 +15,6 @@ Assignment2/simulation.log
 # Project
 !data/
 
-ProjectTradingSystem/order_log.csv
+# Project Trading System
+order_audit**
+order_log.csv

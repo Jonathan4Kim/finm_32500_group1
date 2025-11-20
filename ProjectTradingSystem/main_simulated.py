@@ -15,7 +15,7 @@ from strategy import (
 from risk_engine import RiskEngine
 
 
-def process_stream():
+def run_simulation_stream():
     """Iterate over market data, run all strategies per symbol, and route to OrderManager."""
     risk_engine = RiskEngine(max_order_size=1000, max_position=2000, cash_balance=10000)
     om = OrderManager(risk_engine, simulated=True)
@@ -45,8 +45,6 @@ def process_stream():
             result = om.process_order(order)
             print(f"{mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value} -> {result}")
 
-    om.save_orders_to_csv()
-
 
 if __name__ == "__main__":
-    process_stream()
+    run_simulation_stream()

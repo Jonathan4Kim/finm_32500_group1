@@ -10,6 +10,7 @@ from order import Order
 from risk_engine import RiskEngine
 from logger import Logger
 from matching_engine import MatchingEngine as ME
+from gateway import log_order_event
 
 
 class OrderManager:
@@ -53,9 +54,13 @@ class OrderManager:
         if order.id is None:
             order.id = next(self._order_id_counter)
 
+        # Log send
+        log_order_event(order, event_type="sent")
+
         # Run risk checks
         if not self._risk_engine.check(order):
             self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
+            log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
             return {"ok": False, "msg": "risk_check_failed"}
 
         # Apply risk update
@@ -66,8 +71,8 @@ class OrderManager:
             response = ME.simulate_execution(order)
         else:
             # response = alpaca .............
-            pass
-        # TODO: add re
+            # TODO: add realistic order execution
+            response = {"status": "CANCELLED", "qty": 0, "price": None}
 
         # Build filled version (deep copy)
         filled_order = copy.deepcopy(order)
@@ -83,7 +88,6 @@ class OrderManager:
                 {"reason": f"Order Cancelled {order.id}: "
                            f"{order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
             )
-
         elif status == "PARTIAL":
             self.orders.append(order)
             self.logger.log(
@@ -92,7 +96,6 @@ class OrderManager:
                            f"{filled_order.side} {filled_order.qty} "
                            f"{filled_order.symbol} @ {filled_order.price:.2f}"}
             )
-
         elif status == "FILLED":
             self.orders.append(order)
             self.logger.log(
@@ -101,6 +104,15 @@ class OrderManager:
                            f"{filled_order.side} {filled_order.qty} "
                            f"{filled_order.symbol} @ {filled_order.price:.2f}"}
             )
+
+        # Logs the order status
+        log_order_event(
+            order,
+            event_type=status.lower(),
+            status=status,
+            filled_qty=filled_order.qty,
+            filled_price=filled_order.price,
+        )
 
         # Return execution summary
         return {
@@ -129,16 +141,3 @@ class OrderManager:
                     "price": order.price,
                     "ts": order.ts,
                 })
-
-
-# Example usage
-if __name__ == "__main__":
-    om = OrderManager()
-
-    # Construct orders directly
-    order1 = Order(side="BUY", symbol="AAPL", qty=10, price=180)
-    order2 = Order(side="SELL", symbol="TSLA", qty=3, price=240)
-
-    print(om.process_order(order1))
-    print(om.process_order(order2))
-
