@@ -16,6 +16,7 @@ class Logger:
         Thread-safe for multi-threaded OMS / Risk systems.
         """
         with cls._lock:
+            # ensure instance hasn't been created yet
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
                 cls._instance._initialized = False

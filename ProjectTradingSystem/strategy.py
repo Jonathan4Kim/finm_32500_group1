@@ -3,7 +3,7 @@ from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime, timedelta
-from typing import Optional, Deque, List
+from typing import Optional, Deque, List, Callable, Dict
 import numpy as np
 
 
@@ -240,6 +240,151 @@ class StatisticalSignalStrategy:
         return signal
 
     def get_position_size(self) -> int:
+        return self.position_size
+
+
+class SentimentStrategy:
+    """
+    Streaming sentiment-driven strategy that fuses price bars with external news or
+    social media sentiment scores. Buys when sentiment crosses the positive
+    threshold, sells when sentiment turns strongly negative.
+    """
+
+    def __init__(
+        self,
+        symbol: str,
+        sentiment_lookup: Optional[Callable[[datetime, str], float]] = None,
+        sentiment_scores: Optional[Dict[str, float]] = None,
+        positive_threshold: float = 0.3,
+        negative_threshold: float = -0.3,
+        cooldown_bars: int = 3,
+        position_size: int = 100,
+    ):
+        """
+        Initialize the sentiment strategy with thresholds and an optional external sentiment provider.
+
+        Args:
+            symbol (str): Target trading symbol.
+            sentiment_lookup (Optional[Callable[[datetime, str], float]]): External lookup hook returning
+                a normalized sentiment score for the given timestamp and symbol.
+            sentiment_scores (Optional[Dict[str, float]]): Static mapping of timestamps to sentiment values
+                when no callable provider is supplied.
+            positive_threshold (float): Trigger level to enter long positions.
+            negative_threshold (float): Trigger level to exit longs / go flat.
+            cooldown_bars (int): Minimum number of bars between trades to avoid over-trading.
+            position_size (int): Quantity per order.
+        """
+        if cooldown_bars < 1:
+            raise ValueError("cooldown_bars must be >= 1")
+
+        self.symbol = symbol
+        self.position_size = position_size
+        self.positive_threshold = positive_threshold
+        self.negative_threshold = negative_threshold
+        self.cooldown_bars = cooldown_bars
+        self.position = 0
+        self.signals: List[Signal] = []
+
+        self._sentiment_scores = sentiment_scores or {}
+        self._external_lookup = sentiment_lookup
+        self._bars_since_trade = cooldown_bars
+
+    def _format_key(self, timestamp: datetime) -> str:
+        """
+        Normalize timestamps into keys compatible with stored sentiment scores.
+
+        Args:
+            timestamp (datetime): The event timestamp to normalize.
+
+        Returns:
+            str: Compact representation used inside sentiment score dictionaries.
+        """
+        return timestamp.strftime("%Y-%m-%d %H:%M")
+
+    def _default_sentiment_lookup(self, timestamp: datetime, symbol: str) -> float:
+        """
+        Fetch sentiment from the internal mapping when no external provider is supplied.
+
+        Args:
+            timestamp (datetime): Event timestamp.
+            symbol (str): Symbol for which sentiment is requested (unused but accepted for compatibility).
+
+        Returns:
+            float: Sentiment score in [-1, 1]; defaults to 0.0 when no reading exists.
+        """
+        if symbol != self.symbol:
+            return 0.0
+        exact_key = timestamp.isoformat(timespec="minutes")
+        if exact_key in self._sentiment_scores:
+            return float(self._sentiment_scores[exact_key])
+        return float(self._sentiment_scores.get(self._format_key(timestamp), 0.0))
+
+    def update_sentiment(self, timestamp: datetime, score: float):
+        """
+        Add or overwrite a sentiment reading for an upcoming timestamp.
+
+        Args:
+            timestamp (datetime): When the sentiment applies.
+            score (float): Normalized sentiment measure derived from external data.
+        """
+        self._sentiment_scores[self._format_key(timestamp)] = float(score)
+
+    def _current_sentiment(self, timestamp: datetime) -> float:
+        """
+        Resolve the sentiment score for the provided timestamp using the chosen provider.
+
+        Args:
+            timestamp (datetime): Timestamp associated with the bar.
+
+        Returns:
+            float: Latest sentiment reading.
+        """
+        provider = self._external_lookup or self._default_sentiment_lookup
+        return float(provider(timestamp, self.symbol))
+
+    def on_new_bar(self, data_point: MarketDataPoint) -> Optional[Signal]:
+        """
+        Consume a fresh bar, compare sentiment to thresholds, and emit trading signals as needed.
+
+        Args:
+            data_point (MarketDataPoint): The incoming OHLC-derived price snapshot.
+
+        Returns:
+            Optional[Signal]: BUY/SELL signal when criteria are met, otherwise None.
+        """
+        if data_point.symbol != self.symbol:
+            return None
+
+        sentiment = self._current_sentiment(data_point.timestamp)
+        self._bars_since_trade = min(self.cooldown_bars, self._bars_since_trade + 1)
+        signal = None
+
+        if (
+            self.position == 0
+            and sentiment >= self.positive_threshold
+            and self._bars_since_trade >= self.cooldown_bars
+        ):
+            reason = f"Sentiment {sentiment:.4f} >= threshold {self.positive_threshold}"
+            signal = Signal(data_point.timestamp, SignalType.BUY, self.symbol, float(data_point.price), reason)
+            self.position = 1
+            self._bars_since_trade = 0
+        elif self.position == 1 and sentiment <= self.negative_threshold:
+            reason = f"Sentiment {sentiment:.4f} <= threshold {self.negative_threshold}"
+            signal = Signal(data_point.timestamp, SignalType.SELL, self.symbol, float(data_point.price), reason)
+            self.position = 0
+            self._bars_since_trade = 0
+
+        if signal:
+            self.signals.append(signal)
+        return signal
+
+    def get_position_size(self) -> int:
+        """
+        Return the configured position size for downstream order creation.
+
+        Returns:
+            int: Quantity per order.
+        """
         return self.position_size
 
 
