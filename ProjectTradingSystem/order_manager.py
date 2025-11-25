@@ -6,12 +6,14 @@ from dataclasses import asdict
 from itertools import count
 from typing import Optional
 
-from order import Order
+from alpaca.trading.client import TradingClient
+from alpaca_env_util import load_keys
+
+from order import Order, to_alpaca_order
 from risk_engine import RiskEngine
 from logger import Logger
 from matching_engine import MatchingEngine as ME
 from gateway import log_order_event
-
 
 class OrderManager:
     """
@@ -67,9 +69,10 @@ class OrderManager:
         if self._simulated:
             response = ME.simulate_execution(order)
         else:
-            # response = alpaca .............
-            # TODO: add realistic order execution
-            response = {"status": "CANCELLED", "qty": 0, "price": None}
+            api_key, api_secret = load_keys()
+            trading_client = TradingClient(api_key, api_secret, paper=True)
+            alpaca_order = to_alpaca_order(order)
+            submitted = trading_client.submit_order(alpaca_order)
 
         # Build filled version (deep copy)
         filled_order = copy.deepcopy(order)

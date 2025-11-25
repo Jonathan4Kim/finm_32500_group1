@@ -2,6 +2,9 @@
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, asdict
 
+from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
+
 
 # Order model and validation
 @dataclass
@@ -54,3 +57,27 @@ class Order:
         
         # create the order object
         return Order(side=side, symbol=symbol, qty=qty, price=price, ts=ts, id=oid)
+
+
+def to_alpaca_order(order):
+    side = OrderSide.BUY if order.side.upper() == "BUY" else OrderSide.SELL
+
+    # LIMIT ORDER
+    if order.price is not None:
+        return LimitOrderRequest(
+            symbol=order.symbol,
+            qty=order.qty,
+            side=side,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.DAY,
+            limit_price=order.price,
+        )
+
+    # MARKET ORDER
+    return MarketOrderRequest(
+        symbol=order.symbol,
+        qty=order.qty,
+        side=side,
+        type=OrderType.MARKET,
+        time_in_force=TimeInForce.DAY
+    )
