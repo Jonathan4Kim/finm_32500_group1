@@ -13,8 +13,8 @@ class Secret(str):
         return re.sub(r"\S", "*", self)
 
 def load_keys():
-    api_key = read_key(".alpaca_trading_api_key")
-    api_secret = read_key(".alpaca_trading_api_secret")
+    api_key = read_key(".alpaca_api_key")
+    api_secret = read_key(".alpaca_api_secret")
 
     print(f"Your key was read: {Secret(api_key)}")
     print(f"Your secret was read: {Secret(api_secret)}")

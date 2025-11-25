@@ -18,8 +18,8 @@ Assignment2/simulation.log
 # Project Trading System
 order_audit**
 order_log.csv
-.alpaca_trading_api_key
-.alpaca_trading_api_secret
+.alpaca_api_key
+.alpaca_api_secret
 
 # Assignment 10
 Assignment10/market_data
