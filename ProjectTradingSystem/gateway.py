@@ -1,8 +1,18 @@
 # gateway.py
 import csv
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Generator, Optional
+from queue import Queue
+from threading import Thread
+
+from alpaca.data.live import StockDataStream
+from alpaca.data.enums import DataFeed
+
+from alpaca_env_util import load_keys
+
+from data_client import LiveMarketDataSource
 
 from order import Order
 
@@ -50,7 +60,7 @@ def _default_audit_path() -> Path:
     return out_dir / f"order_audit_{_RUN_ID}.csv"
 
 
-def load_market_data(csv_path: str = "data/market_data.csv") -> Generator[MarketDataPoint, None, None]:
+def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None, None]:
     """
     Stream rows from market_data.csv as MarketDataPoint instances.
     Expects columns: Datetime, Open, High, Low, Close, Volume, Symbol.
@@ -63,41 +73,51 @@ def load_market_data(csv_path: str = "data/market_data.csv") -> Generator[Market
         Generator[MarketDataPoint, None, None]: We yield MarketDataPoints concurrently instead
         of saving them into a list so processing can happen optimally.
     """
-    
-    # open the csv file
-    with open(csv_path, newline="") as f:
-        
-        # use a dictreader so for each row we access column by key
-        reader = csv.DictReader(f)
-        
-        # iterate through each row
-        for row in reader:
-            
-            # access datetime, symbol, and closing price
-            ts_str = row.get("Datetime")
-            symbol = row.get("Symbol")
-            price_str = row.get("Close")
-            
-            # ensure that all these values are non-null
-            if not ts_str or not symbol or price_str is None:
-                continue
-            
-            # parse the timestamp properly (it's in iso-string mode)
-            ts = _parse_timestamp(ts_str)
-            
-            # if that timestamp doesn't have parsing ability/couldn't become datetime, move to next datapoint
-            if ts is None:
-                continue
-            
-            # convert the price from string to float, if possible
-            try:
-                price = float(price_str)
-            except ValueError:
-                continue
-            
-            # yield the actual MarketDataPoint
-            yield MarketDataPoint(timestamp=ts, symbol=symbol, price=price)
+    if simulated:
+        csv_path: str = "data/market_data.csv"
 
+        # open the csv file
+        with open(csv_path, newline="") as f:
+            
+            # use a dictreader so for each row we access column by key
+            reader = csv.DictReader(f)
+            
+            # iterate through each row
+            for row in reader:
+                
+                # access datetime, symbol, and closing price
+                ts_str = row.get("Datetime")
+                symbol = row.get("Symbol")
+                price_str = row.get("Close")
+                
+                # ensure that all these values are non-null
+                if not ts_str or not symbol or price_str is None:
+                    continue
+                
+                # parse the timestamp properly (it's in iso-string mode)
+                ts = _parse_timestamp(ts_str)
+                
+                # if that timestamp doesn't have parsing ability/couldn't become datetime, move to next datapoint
+                if ts is None:
+                    continue
+                
+                # convert the price from string to float, if possible
+                try:
+                    price = float(price_str)
+                except ValueError:
+                    continue
+                
+                # yield the actual MarketDataPoint
+                yield MarketDataPoint(timestamp=ts, symbol=symbol, price=price)
+    else:
+        # --- LIVE MARKET DATA MODE ---
+        api_key, api_secret = load_keys()
+        source = LiveMarketDataSource(api_key, api_secret,
+                                      symbol="AAPL",
+                                      csv_path="streamed_data.csv")
+
+        # yield streaming datapoints (infinite generator)
+        yield from source.stream()
 
 def _order_as_dict(order) -> Dict:
     """
