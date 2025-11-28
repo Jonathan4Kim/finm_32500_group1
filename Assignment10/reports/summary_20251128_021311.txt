@@ -1,0 +1,68 @@
+=== Data Validation ===
+Rows loaded: 9775
+Date range: 2025-11-17 09:30:00 to 2025-11-21 16:00:00
+Tickers: AAPL, AMZN, GOOG, MSFT, TSLA
+
+=== SQLite Queries ===
+TSLA 2025-11-17 to 2025-11-18
+          timestamp symbol   open   high    low  close  volume
+2025-11-17 09:30:00   TSLA 268.31 268.51 267.95 268.07    1609
+2025-11-17 09:31:00   TSLA 268.94 269.11 268.28 269.04    4809
+2025-11-17 09:32:00   TSLA 267.70 267.94 267.69 267.92    1997
+2025-11-17 09:33:00   TSLA 268.45 268.64 268.00 268.56    3461
+2025-11-17 09:34:00   TSLA 269.01 269.57 268.21 269.23    4003
+... (showing first 5 of 782 rows)
+
+Average daily volume per ticker
+symbol  avg_daily_volume
+  AAPL       2767.832737
+  AMZN       2753.424041
+  GOOG       2740.160614
+  MSFT       2686.550895
+  TSLA       2777.424552
+
+Top 3 tickers by return
+symbol  first_close  last_close  return_pct
+  MSFT       183.89      245.70       33.61
+  AAPL       270.88      334.57       23.51
+  GOOG       139.43      153.90       10.38
+
+First/last trade price per day
+symbol       date  first_price  last_price
+  AAPL 2025-11-17       270.88      287.68
+  AAPL 2025-11-18       287.48      289.52
+  AAPL 2025-11-19       288.80      295.87
+  AAPL 2025-11-20       296.99      319.43
+  AAPL 2025-11-21       319.63      334.57
+... (showing first 5 of 25 rows)
+
+=== Parquet Analytics ===
+TSLA partition data
+          timestamp   open   high    low  close  volume
+2025-11-17 09:30:00 268.31 268.51 267.95 268.07    1609
+2025-11-17 09:31:00 268.94 269.11 268.28 269.04    4809
+2025-11-17 09:32:00 267.70 267.94 267.69 267.92    1997
+2025-11-17 09:33:00 268.45 268.64 268.00 268.56    3461
+2025-11-17 09:34:00 269.01 269.57 268.21 269.23    4003
+... (showing first 5 of 782 rows)
+
+Average daily volume from Parquet
+ticker  avg_daily_volume
+  AAPL       2767.832737
+  AMZN       2753.424041
+  GOOG       2740.160614
+  MSFT       2686.550895
+  TSLA       2777.424552
+
+Latest 5-day rolling volatility
+ticker  latest_vol_5
+  AAPL      0.003023
+  AMZN      0.006473
+  GOOG      0.006917
+  MSFT      0.005664
+  TSLA      0.004198
+
+=== Storage Comparison ===
+ format       artifact      size TSLA range query Avg volume query
+ SQLite market_data.db 672.00 KB          1.45 ms          1.35 ms
+Parquet   market_data/ 333.63 KB          1.98 ms          2.33 ms
