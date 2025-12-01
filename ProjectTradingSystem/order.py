@@ -62,6 +62,17 @@ class Order:
 def to_alpaca_order(order):
     side = OrderSide.BUY if order.side.upper() == "BUY" else OrderSide.SELL
 
+    # CRYPTO ORDER
+    if order.symbol == "BTC/USD":
+        return LimitOrderRequest(
+            symbol=order.symbol,
+            qty=order.qty,
+            side=side,
+            type=OrderType.LIMIT,
+            time_in_force=TimeInForce.GTC,
+            limit_price=order.price,
+        )
+
     # LIMIT ORDER
     if order.price is not None:
         return LimitOrderRequest(

@@ -17,7 +17,7 @@ from risk_engine import RiskEngine
 
 def run_stream():
     """Iterate over live market datapoints from Alpaca Socket Webstream, run all strategies per symbol, and route to OrderManager."""
-    risk_engine = RiskEngine(max_order_size=1000, max_position=2000, cash_balance=10000)
+    risk_engine = RiskEngine(max_order_size=1000, max_position=2000, cash_balance=100000)
     om = OrderManager(risk_engine, simulated=False)
 
     strategies: Dict[str, List] = defaultdict(list)
@@ -26,9 +26,9 @@ def run_stream():
         # Lazily create a set of strategies for each symbol encountered.
         if not strategies[mdp.symbol]:
             strategies[mdp.symbol] = [
-                MAStrategy(symbol=mdp.symbol, short_window=3, long_window=5, position_size=10),
-                MomentumStrategy(symbol=mdp.symbol, momentum_window=10, momentum_threshold=0.001, position_size=10),
-                StatisticalSignalStrategy(symbol=mdp.symbol, lookback_window=20, zscore_threshold=1.5, position_size=10),
+                MAStrategy(symbol=mdp.symbol, short_window=1, long_window=2, position_size=1),
+                MomentumStrategy(symbol=mdp.symbol, momentum_window=2, momentum_threshold=0.001, position_size=1),
+                StatisticalSignalStrategy(symbol=mdp.symbol, lookback_window=2, zscore_threshold=1.5, position_size=1),
             ]
 
         for strat in strategies[mdp.symbol]:

@@ -6,7 +6,7 @@ from queue import Queue
 from threading import Thread
 from typing import Generator
 
-from alpaca.data.live import StockDataStream
+from alpaca.data.live import StockDataStream, CryptoDataStream
 from alpaca.data.enums import DataFeed
 
 from strategy import MarketDataPoint
@@ -75,10 +75,14 @@ class LiveMarketDataSource:
 
     async def _run_stream(self):
         """Run the Alpaca websocket streaming forever."""
-        stream = StockDataStream(
+        # stream = StockDataStream(
+        #     self.api_key,
+        #     self.api_secret,
+        #     feed=DataFeed.IEX  # REQUIRED for paper accounts
+        # )
+        stream = CryptoDataStream(
             self.api_key,
-            self.api_secret,
-            feed=DataFeed.IEX  # REQUIRED for paper accounts
+            self.api_secret
         )
 
         stream.subscribe_bars(self._on_bar, self.symbol)
@@ -106,4 +110,8 @@ class LiveMarketDataSource:
         # Yield MDPs as they arrive
         while True:
             mdp = self.queue.get()    # blocking call
+            if mdp:
+                print(mdp)
+            else:
+                print("None type")
             yield mdp

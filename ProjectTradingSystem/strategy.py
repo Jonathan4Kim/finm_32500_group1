@@ -19,6 +19,9 @@ class MarketDataPoint:
     symbol: str
     price: float
 
+    def __str__(self):
+        return f"timestamp: {self.timestamp}, symbol: {self.symbol}, price: {self.price}"
+
 
 @dataclass
 class Signal:

@@ -68,65 +68,69 @@ class OrderManager:
         # Simulate execution via matching engine
         if self._simulated:
             response = ME.simulate_execution(order)
+            # Build filled version (deep copy)
+            filled_order = copy.deepcopy(order)
+            filled_order.qty = response.get("qty", filled_order.qty)
+            filled_order.price = response.get("price", filled_order.price)
+
+            # Log based on status
+            status = response["status"]
+
+            # Apply risk/cash/position updates only on executed quantity
+            if status in ("FILLED", "PARTIAL") and filled_order.qty > 0:
+                self._risk_engine.update_position(filled_order, filled_qty=filled_order.qty)
+
+            if status == "CANCELLED":
+                self.logger.log(
+                    "OrderManager",
+                    {"reason": f"Order Cancelled {order.id}: "
+                               f"{order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
+                )
+            elif status == "PARTIAL":
+                self.orders.append(order)
+                self.logger.log(
+                    "OrderManager",
+                    {"reason": f"Order Partially Filled {order.id}: "
+                               f"{filled_order.side} {filled_order.qty} "
+                               f"{filled_order.symbol} @ {filled_order.price:.2f}"}
+                )
+            elif status == "FILLED":
+                self.orders.append(order)
+                self.logger.log(
+                    "OrderManager",
+                    {"reason": f"Order Filled {order.id}: "
+                               f"{filled_order.side} {filled_order.qty} "
+                               f"{filled_order.symbol} @ {filled_order.price:.2f}"}
+                )
+
+            # Logs the order status
+            log_order_event(
+                order,
+                event_type=status.lower(),
+                status=status,
+                filled_qty=filled_order.qty,
+                filled_price=filled_order.price,
+            )
+
+            # Return execution summary
+            return {
+                "ok": True,
+                "status": status,
+                "order": asdict(order),
+                "filled_qty": filled_order.qty,
+                "filled_price": filled_order.price
+            }
+
         else:
             api_key, api_secret = load_keys()
             trading_client = TradingClient(api_key, api_secret, paper=True)
+            print(trading_client.get_account())
             alpaca_order = to_alpaca_order(order)
             submitted = trading_client.submit_order(alpaca_order)
             print(submitted)
 
-        # Build filled version (deep copy)
-        filled_order = copy.deepcopy(order)
-        filled_order.qty = response.get("qty", filled_order.qty)
-        filled_order.price = response.get("price", filled_order.price)
 
-        # Log based on status
-        status = response["status"]
 
-        # Apply risk/cash/position updates only on executed quantity
-        if status in ("FILLED", "PARTIAL") and filled_order.qty > 0:
-            self._risk_engine.update_position(filled_order, filled_qty=filled_order.qty)
-
-        if status == "CANCELLED":
-            self.logger.log(
-                "OrderManager",
-                {"reason": f"Order Cancelled {order.id}: "
-                           f"{order.side} {order.qty} {order.symbol} @ {order.price:.2f}"}
-            )
-        elif status == "PARTIAL":
-            self.orders.append(order)
-            self.logger.log(
-                "OrderManager",
-                {"reason": f"Order Partially Filled {order.id}: "
-                           f"{filled_order.side} {filled_order.qty} "
-                           f"{filled_order.symbol} @ {filled_order.price:.2f}"}
-            )
-        elif status == "FILLED":
-            self.orders.append(order)
-            self.logger.log(
-                "OrderManager",
-                {"reason": f"Order Filled {order.id}: "
-                           f"{filled_order.side} {filled_order.qty} "
-                           f"{filled_order.symbol} @ {filled_order.price:.2f}"}
-            )
-
-        # Logs the order status
-        log_order_event(
-            order,
-            event_type=status.lower(),
-            status=status,
-            filled_qty=filled_order.qty,
-            filled_price=filled_order.price,
-        )
-
-        # Return execution summary
-        return {
-            "ok": True,
-            "status": status,
-            "order": asdict(order),
-            "filled_qty": filled_order.qty,
-            "filled_price": filled_order.price
-        }
 
 
     def save_orders_to_csv(self, filepath="order_log.csv"):
