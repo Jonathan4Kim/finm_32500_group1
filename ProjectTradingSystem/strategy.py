@@ -47,7 +47,6 @@ class MAStrategy:
         self.symbol = symbol
         self.short_w = short_window
         self.long_w = long_window
-        self.position_size = 0
 
         # rolling buffers
         self._dq_long: Deque[float] = deque(maxlen=self.long_w)
@@ -109,9 +108,6 @@ class MAStrategy:
             self.signals.append(signal)
         return signal
 
-    def get_position_size(self) -> int:
-        return self.position_size
-
 
 # ----------------- Momentum Strategy (streaming ROC) -----------------
 class MomentumStrategy:
@@ -121,13 +117,12 @@ class MomentumStrategy:
     emits SELL when momentum crosses below -threshold while in position.
     """
 
-    def __init__(self, symbol: str, momentum_window: int = 10, momentum_threshold: float = 0.001, position_size: float = 100):
+    def __init__(self, symbol: str, momentum_window: int = 10, momentum_threshold: float = 0.001):
         if momentum_window < 1:
             raise ValueError("momentum_window must be >= 1")
         self.symbol = symbol
         self.m_window = momentum_window
         self.threshold = momentum_threshold
-        self.position_size = position_size
 
         self._dq: Deque[float] = deque(maxlen=self.m_window + 1)  # need price_n and current
         self.position = 0
@@ -171,9 +166,6 @@ class MomentumStrategy:
             self.signals.append(signal)
         return signal
 
-    def get_position_size(self) -> int:
-        return self.position_size
-
 
 # ----------------- Statistical Z-Score Mean Reversion (streaming) -----------------
 class StatisticalSignalStrategy:
@@ -183,13 +175,12 @@ class StatisticalSignalStrategy:
     SELL when z-score crosses zero while in a long position.
     """
 
-    def __init__(self, symbol: str, lookback_window: int = 20, zscore_threshold: float = 1.5, position_size: float = 100):
+    def __init__(self, symbol: str, lookback_window: int = 20, zscore_threshold: float = 1.5):
         if lookback_window < 2:
             raise ValueError("lookback_window must be >= 2")
         self.symbol = symbol
         self.window = lookback_window
         self.threshold = zscore_threshold
-        self.position_size = position_size
 
         self._dq: Deque[float] = deque(maxlen=self.window)
         self.position = 0
@@ -242,10 +233,6 @@ class StatisticalSignalStrategy:
             self.signals.append(signal)
         return signal
 
-    def get_position_size(self) -> int:
-        return self.position_size
-
-
 class SentimentStrategy:
     """
     Streaming sentiment-driven strategy that fuses price bars with external news or
@@ -261,7 +248,6 @@ class SentimentStrategy:
         positive_threshold: float = 0.3,
         negative_threshold: float = -0.3,
         cooldown_bars: int = 3,
-        position_size: int = 100,
     ):
         """
         Initialize the sentiment strategy with thresholds and an optional external sentiment provider.
@@ -281,7 +267,6 @@ class SentimentStrategy:
             raise ValueError("cooldown_bars must be >= 1")
 
         self.symbol = symbol
-        self.position_size = position_size
         self.positive_threshold = positive_threshold
         self.negative_threshold = negative_threshold
         self.cooldown_bars = cooldown_bars
@@ -380,19 +365,10 @@ class SentimentStrategy:
         if signal:
             self.signals.append(signal)
         return signal
-
-    def get_position_size(self) -> int:
-        """
-        Return the configured position size for downstream order creation.
-
-        Returns:
-            int: Quantity per order.
-        """
-        return self.position_size
     
 if __name__ == "__main__":
     # Quick demo to validate MAStrategy generates a buy then a sell signal.
-    ma = MAStrategy(symbol="DEMO", short_window=3, long_window=5, position_size=10)
+    ma = MAStrategy(symbol="DEMO", short_window=3, long_window=5)
     prices = [105, 104, 103, 102, 101, 102, 103, 104, 103, 102, 101]
     start_ts = datetime.now()
 
