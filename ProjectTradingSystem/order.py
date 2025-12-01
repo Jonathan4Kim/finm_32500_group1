@@ -89,11 +89,11 @@ class OrderBuilder():
 
             allocation = cash * 0.01   # 1% of total cash
 
-            if allocation < self.signal.price:
+            if allocation < signal.price:
                 print("Not enough cash to buy even 1 share.")
                 return 0
 
-            qty = int(allocation // self.signal.price)
+            qty = int(allocation // signal.price)
             return qty
 
 
