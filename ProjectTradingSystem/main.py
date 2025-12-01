@@ -45,6 +45,7 @@ def run_stream():
             signal = strat.on_new_bar(mdp)
             if signal:
                 signals.append(signal)
+                print(f"New signal: {strat.__class__.__name__} {signal.signal.value}")
 
         # Ensures all signals match direction
         signals_match = True
@@ -62,7 +63,7 @@ def run_stream():
         else:
             continue
 
-        print(f"New signal: {mdp.symbol} {agreed_signal.timestamp.isoformat()} {agreed_signal.signal.value}")
+        print(f"New agreed signal: {mdp.symbol} {agreed_signal.timestamp.isoformat()} {agreed_signal.signal.value}")
         order = ob.build_order(agreed_signal)
 
         result = om.process_order(order)
