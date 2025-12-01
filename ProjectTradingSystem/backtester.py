@@ -14,7 +14,7 @@ import numpy as np
 from gateway import load_market_data
 from order import Order
 from order_manager import OrderManager
-from risk_engine import RiskEngine
+from risk_engine import RiskEngineSim
 from strategy import (
     MAStrategy,
     MomentumStrategy,
@@ -87,7 +87,7 @@ class Backtester:
         self.market_data_path = market_data_path
         self.initial_capital = float(initial_capital)
 
-        self.risk_engine = RiskEngine(**(risk_limits or {}))
+        self.risk_engine = RiskEngineSim(**(risk_limits or {}))
         self.order_manager = OrderManager(self.risk_engine, simulated=True)
         self._risk_initial_cash = getattr(self.risk_engine, "cash_balance", 0.0)
         self.data_loader: Callable[[str], Iterable[MarketDataPoint]] = load_market_data

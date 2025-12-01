@@ -41,7 +41,7 @@ class MAStrategy:
     a SELL on a crossover from short>=long to short<long.
     """
 
-    def __init__(self, symbol: str, short_window: int = 20, long_window: int = 50, position_size: int = 100):
+    def __init__(self, symbol: str, short_window: int = 20, long_window: int = 50, position_size: float = 100):
         if short_window >= long_window:
             raise ValueError("short_window must be < long_window")
         self.symbol = symbol
@@ -121,7 +121,7 @@ class MomentumStrategy:
     emits SELL when momentum crosses below -threshold while in position.
     """
 
-    def __init__(self, symbol: str, momentum_window: int = 10, momentum_threshold: float = 0.001, position_size: int = 100):
+    def __init__(self, symbol: str, momentum_window: int = 10, momentum_threshold: float = 0.001, position_size: float = 100):
         if momentum_window < 1:
             raise ValueError("momentum_window must be >= 1")
         self.symbol = symbol
@@ -183,7 +183,7 @@ class StatisticalSignalStrategy:
     SELL when z-score crosses zero while in a long position.
     """
 
-    def __init__(self, symbol: str, lookback_window: int = 20, zscore_threshold: float = 1.5, position_size: int = 100):
+    def __init__(self, symbol: str, lookback_window: int = 20, zscore_threshold: float = 1.5, position_size: float = 100):
         if lookback_window < 2:
             raise ValueError("lookback_window must be >= 2")
         self.symbol = symbol

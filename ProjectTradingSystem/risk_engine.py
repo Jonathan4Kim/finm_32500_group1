@@ -4,7 +4,75 @@ from order import Order
 from logger import Logger
 
 
-class RiskEngine:
+class RiskEngineLive:
+    _instance = None
+    _lock = Lock()
+
+
+    def __new__(cls, max_order_value, max_asset_percentage):
+        """
+        Thread-safe Singleton constructor.
+        Ensures only one RiskEngine ever exists.
+        """
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+        return cls._instance
+
+
+    def __init__(self, max_order_value=1000, max_asset_percentage=0.1):
+        """
+        Guard against repeated initialization.
+        """
+        if self._initialized:
+            return
+
+        self.max_order_value = max_order_value
+        self.max_asset_percentage = max_asset_percentage
+
+        self._initialized = True
+
+
+    def check(self, order: Order, trading_client) -> bool:
+        """Return True if order is allowed, False otherwise."""
+
+        # Cash constraint
+        cash_balance = float(trading_client.get_account().non_marginable_buying_power)
+        print(f"Cash balance: {cash_balance}")
+        if order.side == "BUY" and order.qty * order.price > cash_balance:
+            Logger().log(
+                "OrderFailed",
+                {"reason": f"Order value exceeds cash balance {cash_balance}"}
+            )
+            return False
+
+        # Value constraint
+        if order.side == "BUY" and order.qty * order.price > self.max_order_value:
+            Logger().log(
+                "OrderFailed",
+                {"reason": f"Order qty {order.qty} exceeds max order value {self.max_order_value}"}
+            )
+            return False
+
+        # Relative size constraint
+        asset_stats = None
+        equity = float(trading_client.get_account().equity)
+        for asset in trading_client.get_all_positions():
+            if asset.symbol == order.symbol.replace("/", ""):
+                asset_stats = asset
+        print(f"Asset stats: {asset_stats}")
+        if asset_stats:
+            if order.side == "BUY" and order.qty * order.price + float(asset_stats.market_value) > equity * self.max_asset_percentage:
+                Logger().log(
+                    "OrderFailed",
+                    {"reason": f"New order causes symbol position to exceed equity share of {equity * self.max_asset_percentage}"}
+                )
+
+        return True
+
+
+class RiskEngineSim:
     _instance = None
     _lock = Lock()
 

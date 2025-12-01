@@ -12,12 +12,12 @@ from strategy import (
     Signal,
     MarketDataPoint,
 )
-from risk_engine import RiskEngine
+from risk_engine import RiskEngineSim
 
 
 def run_simulation_stream():
     """Iterate over market data, run all strategies per symbol, and route to OrderManager."""
-    risk_engine = RiskEngine(max_order_size=1000, max_position=2000, cash_balance=10000)
+    risk_engine = RiskEngineSim(max_order_size=1000, max_position=2000, cash_balance=10000)
     om = OrderManager(risk_engine, simulated=True)
 
     strategies: Dict[str, List] = defaultdict(list)

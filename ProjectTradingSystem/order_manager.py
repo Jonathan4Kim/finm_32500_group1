@@ -10,7 +10,6 @@ from alpaca.trading.client import TradingClient
 from alpaca_env_util import load_keys
 
 from order import Order, to_alpaca_order
-from risk_engine import RiskEngine
 from logger import Logger
 from matching_engine import MatchingEngine as ME
 from gateway import log_order_event
@@ -21,7 +20,7 @@ class OrderManager:
     It processes Order objects directly (no socket, no JSON).
     """
 
-    def __init__(self, risk_engine: RiskEngine, simulated: bool = False):
+    def __init__(self, risk_engine, simulated: bool = False):
         self._order_id_counter = count(1)
         self._risk_engine = risk_engine
         self._simulated = simulated
@@ -59,14 +58,15 @@ class OrderManager:
         # Log send
         log_order_event(order, event_type="sent")
 
-        # Run risk checks
-        if not self._risk_engine.check(order):
-            self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
-            log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
-            return {"ok": False, "msg": "risk_check_failed"}
-
         # Simulate execution via matching engine
         if self._simulated:
+
+            # Run risk checks
+            if not self._risk_engine.check(order):
+                self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
+                log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
+                return {"ok": False, "msg": "risk_check_failed"}
+
             response = ME.simulate_execution(order)
             # Build filled version (deep copy)
             filled_order = copy.deepcopy(order)
@@ -125,28 +125,13 @@ class OrderManager:
             api_key, api_secret = load_keys()
             trading_client = TradingClient(api_key, api_secret, paper=True)
             print(trading_client.get_account())
+
+            # Run risk checks
+            if not self._risk_engine.check(order, trading_client):
+                self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
+                log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
+                return {"ok": False, "msg": "risk_check_failed"}
+
             alpaca_order = to_alpaca_order(order)
             submitted = trading_client.submit_order(alpaca_order)
             print(submitted)
-
-
-
-
-
-    def save_orders_to_csv(self, filepath="order_log.csv"):
-        fieldnames = ["id", "side", "symbol", "qty", "price", "ts"]
-
-        with open(filepath, "w", newline="") as f:
-            writer = DictWriter(f, fieldnames=fieldnames)
-
-            writer.writeheader()
-
-            for order in self.orders:
-                writer.writerow({
-                    "id": order.id,
-                    "side": order.side,
-                    "symbol": order.symbol,
-                    "qty": order.qty,
-                    "price": order.price,
-                    "ts": order.ts,
-                })
