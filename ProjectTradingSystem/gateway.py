@@ -93,7 +93,25 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         # Create equity source for multiple stock symbols
         equity_source = LiveMarketDataSource(
             api_key, api_secret,
-            symbols=["AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "AVGO", "NFLX", "AMD"],
+            symbols = [
+            "COST","KO","CVX","PM","LLY","CRM","TMO","DIS","PANW","NKE","MKC",
+            "JPM","GS",
+            "XOM","SLB",
+            "UNH","ABBV",
+            "HD","WMT",
+            "PG","PEP",
+            "V","MA",
+            "CAT","GE",
+            "FDX","UPS",
+            "PLD","AMT",
+            "NEE","DUK",
+            "CSCO","TXN",
+            "BKNG","MAR",
+            "MCD","SBUX",
+            "T","TMUS",
+            "ADP","PAYX",
+            "MSCI","CME",
+            "DHR","REGN"],
             csv_path="data/streamed_stock_data.csv",
             stream_type="stock"
         )
