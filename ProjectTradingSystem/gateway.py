@@ -1,27 +1,20 @@
 # gateway.py
 import csv
-import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Generator, Optional
 from queue import Queue
 from threading import Thread
-
-from alpaca.data.live import StockDataStream
-from alpaca.data.enums import DataFeed
+import time
 
 from alpaca_env_util import load_keys
-
 from data_client import LiveMarketDataSource
-
 from order import Order
-
 from strategy import MarketDataPoint
 
 
 def _parse_timestamp(ts_str: str) -> Optional[datetime]:
     """
-    
     Parses Datetime values from market_data.csv (handles timezone offsets).
 
     Args:
@@ -34,13 +27,11 @@ def _parse_timestamp(ts_str: str) -> Optional[datetime]:
     """
     ts_str = ts_str.strip()
     try:
-        # yfinance writes ISO-like strings; allow either space or 'T' separator.
         return datetime.fromisoformat(ts_str.replace(" ", "T"))
     except ValueError:
         return None
 
 
-# Each run/session shares the same audit file; next run uses a new timestamped file.
 _RUN_ID = datetime.now().strftime("%Y%m%d_%H%M%S")
 def _default_audit_path() -> Path:
     """
@@ -52,11 +43,8 @@ def _default_audit_path() -> Path:
     Returns:
         Path: file path that is in output directory
     """
-    # create the order_adits directory if needed
     out_dir = Path("order_audits")
     out_dir.mkdir(parents=True, exist_ok=True)
-    
-    # construct a unique file_path in output directory using run_id
     return out_dir / f"order_audit_{_RUN_ID}.csv"
 
 
@@ -76,49 +64,80 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
     if simulated:
         csv_path: str = "data/market_data.csv"
 
-        # open the csv file
         with open(csv_path, newline="") as f:
-            
-            # use a dictreader so for each row we access column by key
             reader = csv.DictReader(f)
             
-            # iterate through each row
             for row in reader:
-                
-                # access datetime, symbol, and closing price
                 ts_str = row.get("Datetime")
                 symbol = row.get("Symbol")
                 price_str = row.get("Close")
                 
-                # ensure that all these values are non-null
                 if not ts_str or not symbol or price_str is None:
                     continue
                 
-                # parse the timestamp properly (it's in iso-string mode)
                 ts = _parse_timestamp(ts_str)
-                
-                # if that timestamp doesn't have parsing ability/couldn't become datetime, move to next datapoint
                 if ts is None:
                     continue
                 
-                # convert the price from string to float, if possible
                 try:
                     price = float(price_str)
                 except ValueError:
                     continue
                 
-                # yield the actual MarketDataPoint
                 yield MarketDataPoint(timestamp=ts, symbol=symbol, price=price)
+    
     else:
         # --- LIVE MARKET DATA MODE ---
         api_key, api_secret = load_keys()
-        source = LiveMarketDataSource(api_key, api_secret,
-                                      symbol="BTC/USD",
-                                      csv_path="data/streamed_data.csv")
-        print("Awaiting live market data stream...")
-        print(source)
-        # yield streaming datapoints (infinite generator)
-        yield from source.stream()
+
+        # Create equity source for multiple stock symbols
+        equity_source = LiveMarketDataSource(
+            api_key, api_secret,
+            symbols=["AAPL", "MSFT", "TSLA", "GOOGL", "AMZN", "NVDA", "META", "AVGO", "NFLX", "AMD"],
+            csv_path="data/streamed_stock_data.csv",
+            stream_type="stock"
+        )
+
+        # Create crypto source for multiple crypto symbols
+        crypto_source = LiveMarketDataSource(
+            api_key, api_secret,
+            symbols=["BTC/USD", "ETH/USD", "SOL/USD"],
+            csv_path="data/streamed_crypto_data.csv",
+            stream_type="crypto"
+        )
+
+        print("Starting live market data streams...")
+        print(f"Equity symbols: {equity_source.symbols}")
+        print(f"Crypto symbols: {crypto_source.symbols}")
+
+        # Create a shared queue that both streams will feed into
+        shared_queue = Queue()
+
+        def stream_to_queue(source, queue):
+            """Helper to push stream data into shared queue"""
+            try:
+                for mdp in source.stream():
+                    queue.put(mdp)
+            except Exception as e:
+                print(f"Stream error for {source.stream_type}: {e}")
+                # Stream will automatically reconnect via Alpaca's WebSocket
+
+        # Start both streams in separate threads so they run independently
+        equity_thread = Thread(target=stream_to_queue, args=(equity_source, shared_queue), daemon=True)
+        crypto_thread = Thread(target=stream_to_queue, args=(crypto_source, shared_queue), daemon=True)
+        
+        equity_thread.start()
+        crypto_thread.start()
+
+        print("Both streams running independently...")
+        print("- Crypto: 24/7")
+        print("- Equities: During market hours")
+        
+        # Yield from shared queue (merges both streams)
+        while True:
+            mdp = shared_queue.get()  # Blocking call
+            yield mdp
+
 
 def _order_as_dict(order) -> Dict:
     """
@@ -135,7 +154,6 @@ def _order_as_dict(order) -> Dict:
     Returns:
         Dict: a flat dictionary we can use for logging!
     """
-    
     # order instance conversion
     if isinstance(order, Order):
         return {
@@ -146,7 +164,6 @@ def _order_as_dict(order) -> Dict:
             "price": order.price,
             "ts": order.ts,
         }
-    
     # dictionary instance conversion
     if isinstance(order, dict):
         return {
@@ -157,7 +174,6 @@ def _order_as_dict(order) -> Dict:
             "price": order.get("price"),
             "ts": order.get("ts"),
         }
-    
     # any other type conversion
     raise TypeError("order must be Order or dict-like")
 
@@ -185,11 +201,9 @@ def log_order_event(
         filled_price (Optional[float], optional): price that was filled/to be logged. Defaults to None.
         note (Optional[str], optional): Any additional things that are seen. Defaults to None.
     """
-    
     # convert into flat dictionary using _order_as_dict for loggin gpurposes
     row = _order_as_dict(order)
     
-    # update the row
     row.update(
         {
             "event_time": datetime.now().isoformat(),
@@ -200,12 +214,11 @@ def log_order_event(
             "note": note,
         }
     )
-
     # get the filepath if necessary using default_audit path
     path = Path(filepath) if filepath else _default_audit_path()
-    
     # boolean to tell us if a pth exists
     exists = path.exists()
+    
     fieldnames = [
         "event_time",
         "event_type",
@@ -222,13 +235,7 @@ def log_order_event(
     ]
     # write into file 
     with path.open("a", newline="") as f:
-        
-        # create a writer for our file
         writer = csv.DictWriter(f, fieldnames=fieldnames)
-        
-        # write the header of the file if it hasn't been created
         if not exists:
             writer.writeheader()
-        
-        # write the row we want to log
         writer.writerow(row)
