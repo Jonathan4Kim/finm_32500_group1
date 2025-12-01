@@ -1,0 +1,14 @@
+Just so you don't have to run it!
+
+=== Assignment 11 Report ===
+Best model: RandomForestClassifier
+Holdout Accuracy: 48.92% | Precision: 48.51% | Recall: 35.14%
+Cross-validated accuracy mean: 52.75%
+
+=== Backtest Metrics ===
+total_return: 0.52%
+buy_hold_return: 0.12%
+max_drawdown: -0.62%
+win_rate: 47.73%
+trades: 44
+avg_trade_pnl: 11.83614719681127
