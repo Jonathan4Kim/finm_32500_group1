@@ -23,3 +23,8 @@ order_log.csv
 
 # Assignment 10
 Assignment10/market_data
+
+
+# Project Trading System
+ProjectTradingSystem/data/streamed_data.csv
+ProjectTradingSystem/test.py
