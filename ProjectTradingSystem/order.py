@@ -2,6 +2,8 @@
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, asdict
 
+from strategy import Signal, SignalType
+
 from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
 from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
@@ -57,6 +59,50 @@ class Order:
         
         # create the order object
         return Order(side=side, symbol=symbol, qty=qty, price=price, ts=ts, id=oid)
+
+class OrderBuilder():
+
+    def __init__(self, trading_client, signal: Signal):
+        
+        self.trading_client = trading_client
+        self.signal = signal
+    
+    def get_order_size(self):
+        
+        if self.signal.signal == SignalType.SELL:
+            position = self.trading_client.get_open_position(self.symbol)
+            qty = abs(float(position.qty))  # Ensure numeric size
+
+            if qty == 0:
+                print("No open position to close.")
+                return
+            
+            return qty
+        
+        if self.signal.signal == SignalType.BUY:
+            account = self.trading_client.get_account()
+            cash = float(account.cash)
+
+            allocation = cash * 0.01   # 1% of total cash
+
+            if allocation < self.signal.price:
+                print("Not enough cash to buy even 1 share.")
+                return 0
+
+            qty = int(allocation // self.signal.price)
+            return qty
+
+
+    def build_order(self) -> Order:
+
+        order = Order(
+            side = self.signal.signal.value,
+            symbol = self.signal.symbol,
+            qty = self.get_order_size(),
+            price = self.signal.price
+        )
+
+        return order        
 
 
 def to_alpaca_order(order):

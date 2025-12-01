@@ -6,9 +6,6 @@ from dataclasses import asdict
 from itertools import count
 from typing import Optional
 
-from alpaca.trading.client import TradingClient
-from alpaca_env_util import load_keys
-
 from order import Order, to_alpaca_order
 from logger import Logger
 from matching_engine import MatchingEngine as ME
@@ -20,8 +17,9 @@ class OrderManager:
     It processes Order objects directly (no socket, no JSON).
     """
 
-    def __init__(self, risk_engine, simulated: bool = False):
+    def __init__(self, trading_client, risk_engine, simulated: bool = False):
         self._order_id_counter = count(1)
+        self.trading_client = trading_client
         self._risk_engine = risk_engine
         self._simulated = simulated
         self.orders = []
@@ -122,8 +120,7 @@ class OrderManager:
             }
 
         else:
-            api_key, api_secret = load_keys()
-            trading_client = TradingClient(api_key, api_secret, paper=True)
+            trading_client = self.trading_client
             print(trading_client.get_account())
 
             # Run risk checks

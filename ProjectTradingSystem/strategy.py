@@ -41,13 +41,13 @@ class MAStrategy:
     a SELL on a crossover from short>=long to short<long.
     """
 
-    def __init__(self, symbol: str, short_window: int = 20, long_window: int = 50, position_size: float = 100):
+    def __init__(self, symbol: str, short_window: int = 20, long_window: int = 50):
         if short_window >= long_window:
             raise ValueError("short_window must be < long_window")
         self.symbol = symbol
         self.short_w = short_window
         self.long_w = long_window
-        self.position_size = position_size
+        self.position_size = 0
 
         # rolling buffers
         self._dq_long: Deque[float] = deque(maxlen=self.long_w)
@@ -389,8 +389,7 @@ class SentimentStrategy:
             int: Quantity per order.
         """
         return self.position_size
-
-
+    
 if __name__ == "__main__":
     # Quick demo to validate MAStrategy generates a buy then a sell signal.
     ma = MAStrategy(symbol="DEMO", short_window=3, long_window=5, position_size=10)

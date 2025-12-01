@@ -2,8 +2,11 @@
 from collections import defaultdict
 from typing import Dict, List, Optional
 
+from alpaca.trading.client import TradingClient
+from alpaca_env_util import load_keys
+
 from gateway import load_market_data
-from order import Order
+from order import OrderBuilder
 from order_manager import OrderManager
 from strategy import (
     MAStrategy,
@@ -17,8 +20,11 @@ from risk_engine import RiskEngineLive
 
 def run_stream():
     """Iterate over live market datapoints from Alpaca Socket Webstream, run all strategies per symbol, and route to OrderManager."""
+    api_key, api_secret = load_keys()
+    trading_client = TradingClient(api_key, api_secret, paper=True)
+    
     risk_engine = RiskEngineLive(max_order_value=10000 , max_asset_percentage=0.10)
-    om = OrderManager(risk_engine, simulated=False)
+    om = OrderManager(trading_client, risk_engine, simulated=False)
 
     strategies: Dict[str, List] = defaultdict(list)
 
@@ -36,12 +42,7 @@ def run_stream():
             if not signal:
                 continue
 
-            order = Order(
-                side=signal.signal.value,
-                symbol=signal.symbol,
-                qty=strat.get_position_size(),
-                price=signal.price,
-            )
+            order = OrderBuilder(trading_client, signal)
             result = om.process_order(order)
             print(f"{mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value} -> {result}")
 
