@@ -113,9 +113,10 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         # --- LIVE MARKET DATA MODE ---
         api_key, api_secret = load_keys()
         source = LiveMarketDataSource(api_key, api_secret,
-                                      symbol="AAPL",
-                                      csv_path="streamed_data.csv")
-
+                                      symbol="BTC/USD",
+                                      csv_path="data/streamed_data.csv")
+        print("Awaiting live market data stream...")
+        print(source)
         # yield streaming datapoints (infinite generator)
         yield from source.stream()
 
