@@ -73,6 +73,7 @@ class OrderManager:
             trading_client = TradingClient(api_key, api_secret, paper=True)
             alpaca_order = to_alpaca_order(order)
             submitted = trading_client.submit_order(alpaca_order)
+            print(submitted)
 
         # Build filled version (deep copy)
         filled_order = copy.deepcopy(order)
