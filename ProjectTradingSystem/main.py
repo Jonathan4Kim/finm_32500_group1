@@ -44,6 +44,7 @@ def run_stream():
             if not signal:
                 continue
 
+            print(f"New signal: {mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value}")
             order = ob.build_order(signal)
 
             result = om.process_order(order)

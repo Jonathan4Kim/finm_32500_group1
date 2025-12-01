@@ -36,14 +36,18 @@ class RiskEngineLive:
 
     def check(self, order: Order, trading_client) -> bool:
         """Return True if order is allowed, False otherwise."""
+        print(f"Checking order: {order}")
+
+        # Finds the stats for the asset if portfolio holds any
         asset_stats = None
         for asset in trading_client.get_all_positions():
             if asset.symbol == order.symbol.replace("/", ""):
                 asset_stats = asset
+        if asset_stats is None:
+            print(f"No stats found for {order.symbol}. Continuing risk checks.")
 
         # Cash constraint
         cash_balance = float(trading_client.get_account().non_marginable_buying_power)
-        print(f"Cash balance: {cash_balance}")
         if order.side == "BUY" and order.qty * order.price > cash_balance:
             Logger().log(
                 "OrderFailed",

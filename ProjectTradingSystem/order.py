@@ -141,5 +141,5 @@ def to_alpaca_order(order):
         qty=order.qty,
         side=side,
         type=OrderType.MARKET,
-        time_in_force=TimeInForce.DAY
+        time_in_force=TimeInForce.GTC
     )
