@@ -121,9 +121,10 @@ class OrderManager:
 
         else:
             trading_client = self.trading_client
-            print(trading_client.get_account())
 
             # Run risk checks
+            print("Checking order")
+            print(order)
             if not self._risk_engine.check(order, trading_client):
                 self.logger.log("OrderManager", {"reason": "Order failed risk checks"})
                 log_order_event(order, event_type="rejected", status="risk_check_failed", note="risk_check_failed")
@@ -131,4 +132,3 @@ class OrderManager:
 
             alpaca_order = to_alpaca_order(order)
             submitted = trading_client.submit_order(alpaca_order)
-            print(submitted)

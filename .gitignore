@@ -26,5 +26,5 @@ Assignment10/market_data
 
 
 # Project Trading System
-ProjectTradingSystem/data/streamed_data.csv
+ProjectTradingSystem/data/**.csv
 ProjectTradingSystem/test.py

@@ -111,29 +111,29 @@ class OrderBuilder():
 
 def to_alpaca_order(order):
     side = OrderSide.BUY if order.side.upper() == "BUY" else OrderSide.SELL
-    price = round(order.price, 2)
+    # price = round(order.price, 2)
 
     # CRYPTO ORDER
-    if "/" in order.symbol:
-        return LimitOrderRequest(
-            symbol=order.symbol,
-            qty=order.qty,
-            side=side,
-            type=OrderType.LIMIT,
-            time_in_force=TimeInForce.FOK,
-            limit_price=price,
-        )
+    # if "/" in order.symbol:
+    #     return LimitOrderRequest(
+    #         symbol=order.symbol,
+    #         qty=order.qty,
+    #         side=side,
+    #         type=OrderType.LIMIT,
+    #         time_in_force=TimeInForce.FOK,
+    #         limit_price=price,
+    #     )
 
     # LIMIT ORDER
-    if order.price is not None:
-        return LimitOrderRequest(
-            symbol=order.symbol,
-            qty=order.qty,
-            side=side,
-            type=OrderType.LIMIT,
-            time_in_force=TimeInForce.FOK,
-            limit_price=price,
-        )
+    # if order.price is not None:
+    #     return LimitOrderRequest(
+    #         symbol=order.symbol,
+    #         qty=order.qty,
+    #         side=side,
+    #         type=OrderType.LIMIT,
+    #         time_in_force=TimeInForce.FOK,
+    #         limit_price=price,
+    #     )
 
     # MARKET ORDER
     return MarketOrderRequest(

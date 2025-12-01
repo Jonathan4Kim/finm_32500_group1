@@ -36,6 +36,10 @@ class RiskEngineLive:
 
     def check(self, order: Order, trading_client) -> bool:
         """Return True if order is allowed, False otherwise."""
+        asset_stats = None
+        for asset in trading_client.get_all_positions():
+            if asset.symbol == order.symbol.replace("/", ""):
+                asset_stats = asset
 
         # Cash constraint
         cash_balance = float(trading_client.get_account().non_marginable_buying_power)
@@ -44,6 +48,14 @@ class RiskEngineLive:
             Logger().log(
                 "OrderFailed",
                 {"reason": f"Order value exceeds cash balance {cash_balance}"}
+            )
+            return False
+
+        # Check enough position to sell
+        if order.side =="SELL" and (asset_stats is None or float(asset_stats.qty) < order.qty):
+            Logger().log(
+                "OrderFailed",
+                {"reason": f"Order qty {order.qty} exceeds current position size of {asset_stats.qty if asset_stats else 0}"}
             )
             return False
 
@@ -56,12 +68,7 @@ class RiskEngineLive:
             return False
 
         # Relative size constraint
-        asset_stats = None
         equity = float(trading_client.get_account().equity)
-        for asset in trading_client.get_all_positions():
-            if asset.symbol == order.symbol.replace("/", ""):
-                asset_stats = asset
-        print(f"Asset stats: {asset_stats}")
         if asset_stats:
             if order.side == "BUY" and order.qty * order.price + float(asset_stats.market_value) > equity * self.max_asset_percentage:
                 Logger().log(
