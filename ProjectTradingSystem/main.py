@@ -42,7 +42,8 @@ def run_stream():
             if not signal:
                 continue
 
-            order = OrderBuilder(trading_client, signal)
+            order_builder = OrderBuilder(trading_client, signal)
+            order = order_builder.build_order()
             result = om.process_order(order)
             print(f"{mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value} -> {result}")
 
