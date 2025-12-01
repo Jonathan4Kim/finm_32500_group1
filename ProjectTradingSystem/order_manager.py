@@ -5,11 +5,28 @@ import copy
 from dataclasses import asdict
 from itertools import count
 from typing import Optional
+from datetime import datetime, time
+import pytz
 
 from order import Order, to_alpaca_order
 from logger import Logger
 from matching_engine import MatchingEngine as ME
 from gateway import log_order_event
+
+
+def is_market_open_now():
+    eastern = pytz.timezone("US/Eastern")
+    now = datetime.now(eastern)
+
+    # Check weekday (0=Mon, 6=Sun)
+    if now.weekday() > 4:
+        return False
+
+    market_open = time(9, 30)
+    market_close = time(16, 0)
+
+    return market_open <= now.time() <= market_close
+
 
 class OrderManager:
     """
@@ -44,6 +61,9 @@ class OrderManager:
 
         if order.price <= 0:
             return {"ok": False, "msg": "Price must be > 0"}
+
+        if "/" not in order.symbol and not is_market_open_now(): # Ensure market is open for equity trades
+            return {"ok": False, "msg": "Equity trades must be made during trading hours"}
 
         # Assign timestamp if missing
         if order.ts is None:
@@ -144,3 +164,5 @@ class OrderManager:
             "filled_qty": filled_order.qty,
             "filled_price": filled_order.price
         }
+
+
