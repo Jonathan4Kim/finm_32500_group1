@@ -81,6 +81,7 @@ class OrderManager:
 
             # Parses response from Alpaca
             response = {"qty": submitted.filled_qty, "price": submitted.filled_avg_price}
+            # TODO: all statuses are pending_new by default so does not really affect anything here
             if submitted.status == "filled":
                 response["status"] = "FILLED"
             elif submitted.status == "canceled":
