@@ -62,24 +62,28 @@ class Order:
 
 class OrderBuilder():
 
-    def __init__(self, trading_client, signal: Signal):
+    def __init__(self, trading_client):
         
         self.trading_client = trading_client
-        self.signal = signal
     
-    def get_order_size(self):
+    def get_order_size(self, signal: Signal):
         
-        if self.signal.signal == SignalType.SELL:
-            position = self.trading_client.get_open_position(self.symbol)
-            qty = abs(float(position.qty))  # Ensure numeric size
+        if signal.signal == SignalType.SELL:
+            try:
+                position = self.trading_client.get_open_position(signal.symbol)
+                qty = abs(float(position.qty))
 
-            if qty == 0:
-                print("No open position to close.")
-                return
-            
-            return qty
+                if qty == 0:
+                    print("No position to close.")
+                    return 0
+
+                return int(qty)
+
+            except Exception:
+                print("No open position found.")
+                return 0
         
-        if self.signal.signal == SignalType.BUY:
+        if signal.signal == SignalType.BUY:
             account = self.trading_client.get_account()
             cash = float(account.cash)
 
@@ -93,13 +97,13 @@ class OrderBuilder():
             return qty
 
 
-    def build_order(self) -> Order:
+    def build_order(self, signal: Signal) -> Order:
 
         order = Order(
-            side = self.signal.signal.value,
-            symbol = self.signal.symbol,
-            qty = self.get_order_size(),
-            price = self.signal.price
+            side = signal.signal.value,
+            symbol = signal.symbol,
+            qty = self.get_order_size(signal),
+            price = signal.price
         )
 
         return order        

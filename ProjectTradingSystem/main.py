@@ -26,6 +26,8 @@ def run_stream():
     risk_engine = RiskEngineLive(max_order_value=10000 , max_asset_percentage=0.10)
     om = OrderManager(trading_client, risk_engine, simulated=False)
 
+    ob = OrderBuilder(trading_client)
+
     strategies: Dict[str, List] = defaultdict(list)
 
     for mdp in load_market_data(simulated=False):
@@ -42,8 +44,8 @@ def run_stream():
             if not signal:
                 continue
 
-            order_builder = OrderBuilder(trading_client, signal)
-            order = order_builder.build_order()
+            order = ob.build_order(signal)
+
             result = om.process_order(order)
             print(f"{mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value} -> {result}")
 
