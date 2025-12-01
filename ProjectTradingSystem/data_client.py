@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from queue import Queue
 from threading import Thread
-from typing import Generator
+from typing import Generator, List
 
 from alpaca.data.live import StockDataStream, CryptoDataStream
 from alpaca.data.enums import DataFeed
@@ -18,16 +18,19 @@ class LiveMarketDataSource:
     - Writes each FULL bar to a CSV file
     - Yields simplified MarketDataPoint objects (timestamp, symbol, price)
       for feeding into your trading engine.
+    - Supports multiple symbols for both crypto and stocks
     """
 
     def __init__(self, api_key: str, api_secret: str,
-                 symbol: str = "AAPL",
-                 csv_path: str = "streamed_data.csv"):
+                 symbols: List[str] = None,
+                 csv_path: str = "streamed_data.csv",
+                 stream_type: str = "crypto"):
 
         self.api_key = api_key
         self.api_secret = api_secret
-        self.symbol = symbol
+        self.symbols = symbols if symbols else ["BTC/USD"]
         self.csv_path = csv_path
+        self.stream_type = stream_type
 
         # Thread-safe queue for MDPs
         self.queue: Queue[MarketDataPoint] = Queue()
@@ -75,17 +78,20 @@ class LiveMarketDataSource:
 
     async def _run_stream(self):
         """Run the Alpaca websocket streaming forever."""
-        # stream = StockDataStream(
-        #     self.api_key,
-        #     self.api_secret,
-        #     feed=DataFeed.IEX  # REQUIRED for paper accounts
-        # )
-        stream = CryptoDataStream(
-            self.api_key,
-            self.api_secret
-        )
+        if self.stream_type == "crypto":
+            stream = CryptoDataStream(
+                self.api_key,
+                self.api_secret
+            )
+        else:  # stock
+            stream = StockDataStream(
+                self.api_key,
+                self.api_secret,
+                feed=DataFeed.IEX  # REQUIRED for paper accounts
+            )
 
-        stream.subscribe_bars(self._on_bar, self.symbol)
+        # Subscribe to ALL symbols using unpacking
+        stream.subscribe_bars(self._on_bar, *self.symbols)
 
         await stream._run_forever()  # safe for any environment
 
@@ -115,3 +121,21 @@ class LiveMarketDataSource:
             else:
                 print("None type")
             yield mdp
+class CryptoDataSource(LiveMarketDataSource):
+    """
+    Crypto version - uses CryptoDataStream.
+    """
+    def __init__(self, api_key: str, api_secret: str,
+                 symbols: List[str] = None,
+                 csv_path: str = "streamed_crypto_data.csv"):
+        super().__init__(api_key, api_secret, symbols, csv_path, stream_type="crypto")
+
+
+class EquityDataSource(LiveMarketDataSource):
+    """
+    Stock version - uses StockDataStream with IEX feed.
+    """
+    def __init__(self, api_key: str, api_secret: str,
+                 symbols: List[str] = None,
+                 csv_path: str = "streamed_stock_data.csv"):
+        super().__init__(api_key, api_secret, symbols, csv_path, stream_type="stock")
