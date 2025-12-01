@@ -39,16 +39,34 @@ def run_stream():
                 StatisticalSignalStrategy(symbol=mdp.symbol, lookback_window=10, zscore_threshold=1.5),
             ]
 
+        # Checks the signal for each strategy given the new data
+        signals = []
         for strat in strategies[mdp.symbol]:
-            signal: Optional[Signal] = strat.on_new_bar(mdp)  # type: ignore[arg-type]
-            if not signal:
-                continue
+            signal = strat.on_new_bar(mdp)
+            if signal:
+                signals.append(signal)
 
-            print(f"New signal: {mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value}")
-            order = ob.build_order(signal)
+        # Ensures all signals match direction
+        signals_match = True
+        for i in range(len(signals) - 1):
+            if signals[i].signal.value != signals[i+1].signal.value:
+                signals_match = False
+                break
+        if not signals_match:
+            print("Signals do not all match")
+            continue
 
-            result = om.process_order(order)
-            print(f"{mdp.symbol} {strat.__class__.__name__} {signal.timestamp.isoformat()} {signal.signal.value} -> {result}")
+        # Gets the agreed signal if possible
+        if signals:
+            agreed_signal = signals[0]
+        else:
+            continue
+
+        print(f"New signal: {mdp.symbol} {agreed_signal.timestamp.isoformat()} {agreed_signal.signal.value}")
+        order = ob.build_order(agreed_signal)
+
+        result = om.process_order(order)
+        print(f"{mdp.symbol} {agreed_signal.timestamp.isoformat()} {agreed_signal.signal.value} -> {result}")
 
 
 if __name__ == "__main__":
