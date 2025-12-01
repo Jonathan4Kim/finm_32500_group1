@@ -17,7 +17,7 @@ from risk_engine import RiskEngineLive
 
 def run_stream():
     """Iterate over live market datapoints from Alpaca Socket Webstream, run all strategies per symbol, and route to OrderManager."""
-    risk_engine = RiskEngineLive(max_order_value=100000 , max_asset_percentage=0.10)
+    risk_engine = RiskEngineLive(max_order_value=10000 , max_asset_percentage=0.10)
     om = OrderManager(risk_engine, simulated=False)
 
     strategies: Dict[str, List] = defaultdict(list)
