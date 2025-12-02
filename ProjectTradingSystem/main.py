@@ -45,7 +45,7 @@ def run_stream():
             signal = strat.on_new_bar(mdp)
             if signal:
                 signals.append(signal)
-                print(f"New signal: {strat.__class__.__name__} {signal.signal.value}")
+                print(f"New signal: {mdp.symbol} {strat.__class__.__name__} {signal.signal.value}")
 
         # Ensures all signals match direction
         signals_match = True
