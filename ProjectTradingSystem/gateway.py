@@ -145,7 +145,7 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         crypto_thread = Thread(target=stream_to_queue, args=(crypto_source, shared_queue), daemon=True)
         
         equity_thread.start()
-        crypto_thread.start()
+        # crypto_thread.start() # TODO: Remove crypto trading due to fees
 
         print("Both streams running independently...")
         print("- Crypto: 24/7")
