@@ -73,12 +73,11 @@ class RiskEngineLive:
 
         # Relative size constraint
         equity = float(trading_client.get_account().equity)
-        if asset_stats:
-            if order.side == "BUY" and order.qty * order.price + float(asset_stats.market_value) > equity * self.max_asset_percentage:
-                Logger().log(
-                    "OrderFailed",
-                    {"reason": f"New order causes symbol position to exceed equity share of {equity * self.max_asset_percentage}"}
-                )
+        if asset_stats and order.side == "BUY" and order.qty * order.price + float(asset_stats.market_value) > equity * self.max_asset_percentage:
+            Logger().log(
+                "OrderFailed",
+                {"reason": f"New order causes symbol position to exceed equity share of {equity * self.max_asset_percentage}"}
+            )
             return False
 
         return True
