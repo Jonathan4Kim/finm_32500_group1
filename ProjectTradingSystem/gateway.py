@@ -11,7 +11,7 @@ from alpaca_env_util import load_keys
 from data_client import LiveMarketDataSource
 from order import Order
 from strategy import MarketDataPoint
-
+from config.symbols import SYMBOLS
 
 def _parse_timestamp(ts_str: str) -> Optional[datetime]:
     """
@@ -93,25 +93,7 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         # Create equity source for multiple stock symbols
         equity_source = LiveMarketDataSource(
             api_key, api_secret,
-            symbols = [
-            "COST","KO","CVX","PM","LLY","CRM","TMO","DIS","PANW","NKE","MKC",
-            "JPM","GS",
-            "XOM","SLB",
-            "UNH","ABBV",
-            "HD","WMT",
-            "PG","PEP",
-            "V","MA",
-            "CAT","GE",
-            "FDX","UPS",
-            "PLD","AMT",
-            "NEE","DUK",
-            "CSCO","TXN",
-            "BKNG","MAR",
-            "MCD","SBUX",
-            "T","TMUS",
-            "ADP","PAYX",
-            "MSCI","CME",
-            "DHR","REGN"],
+            symbols = SYMBOLS,
             csv_path="data/streamed_stock_data.csv",
             stream_type="stock"
         )
