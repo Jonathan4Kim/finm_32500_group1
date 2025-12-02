@@ -1,5 +1,5 @@
 # order_manager.py
-import time
+import time as t
 from csv import DictWriter
 import copy
 from dataclasses import asdict
@@ -67,7 +67,7 @@ class OrderManager:
 
         # Assign timestamp if missing
         if order.ts is None:
-            order.ts = time.time()
+            order.ts = t.time()
 
         # Assign server order ID if missing
         if order.id is None:

@@ -79,6 +79,7 @@ class RiskEngineLive:
                     "OrderFailed",
                     {"reason": f"New order causes symbol position to exceed equity share of {equity * self.max_asset_percentage}"}
                 )
+            return False
 
         return True
 

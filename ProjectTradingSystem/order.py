@@ -70,7 +70,7 @@ class OrderBuilder():
         
         if signal.signal == SignalType.SELL:
             try:
-                position = self.trading_client.get_open_position(signal.symbol)
+                position = self.trading_client.get_open_position(signal.symbol.replace("/", ""))
                 qty = abs(float(position.qty))
 
                 if qty == 0:
