@@ -8,13 +8,7 @@ from alpaca_env_util import load_keys
 from gateway import load_market_data
 from order import OrderBuilder
 from order_manager import OrderManager
-from strategy import (
-    MAStrategy,
-    MomentumStrategy,
-    StatisticalSignalStrategy,
-    Signal,
-    MarketDataPoint,
-)
+from strategy import MarketDataPoint
 from risk_engine import RiskEngineLive
 from symbol_state import SymbolState
 from config.stocks import STOCKS
@@ -33,10 +27,14 @@ def on_market_data(mdp: MarketDataPoint):
         return None
 
     state = symbol_states[mdp.symbol]
-    regime, signal = state.update_state(mdp.price)
-    
-    print(f"Regime: {regime} detected for {mdp.symbol} at {mdp.timestamp}")
-    print(f"Signal: {signal}")
+    regime, signal = state.update_state(mdp.price, mdp.timestamp)
+
+    if regime == "WARMING":
+        if state.bars_seen % 5 == 0:  # only log every 5 bars to reduce spam
+            print(f"[{mdp.symbol}] Warming up: {state.bars_seen}/{state.warmup_bars}")
+    else:
+        print(f"Regime: {regime} detected for {mdp.symbol} at {mdp.timestamp}")
+        print(f"Signal: {signal}")
 
     return signal
 
@@ -54,7 +52,6 @@ def run_stream():
         signal = on_market_data(mdp)
         
         if signal is None:
-            print("No signal yet (startup warmup)")
             continue
 
         order = ob.build_order(signal)
