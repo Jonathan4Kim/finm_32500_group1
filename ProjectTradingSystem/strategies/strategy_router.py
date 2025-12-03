@@ -1,5 +1,13 @@
-from breakout_strategy import BreakoutStrategy
-from trend_strategy import TrendStrategy
+import sys
+import os
+
+# Add the project root (PTS) to Python path
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
+
+from strategies.breakout_strategy import BreakoutStrategy
+from strategies.trend_strategy import TrendStrategy
 from strategies.reversal_strategy import ReversalStrategy
 from strategy import Signal, SignalType
 

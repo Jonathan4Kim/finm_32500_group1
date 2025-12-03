@@ -1,4 +1,4 @@
-SYMBOLS = [
+STOCKS = [
     "ABBV",
     "ADP",
     "AMT",

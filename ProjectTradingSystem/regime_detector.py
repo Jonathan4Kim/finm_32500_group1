@@ -13,6 +13,10 @@ class RegimeDetector:
 
 
     def detect(self, price: float, engine: IndicatorEngine):
+
+        if engine.ema9 is None or engine.ema21 is None or engine.ema50 is None:
+            return None
+
         # Store previous
         prev_ema9 = self.prev_ema9
         prev_ema21 = self.prev_ema21

@@ -1,0 +1,1 @@
+CRYPTO = ["BTC/USD", "ETH/USD", "SOL/USD"]

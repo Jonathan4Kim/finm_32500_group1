@@ -17,7 +17,10 @@ from strategy import (
 )
 from risk_engine import RiskEngineLive
 from symbol_state import SymbolState
-from config.symbols import SYMBOLS
+from config.stocks import STOCKS
+from config.crypto import CRYPTO
+
+SYMBOLS = STOCKS + CRYPTO
 
 # Create all symbol states from config file
 symbol_states = {
@@ -32,28 +35,31 @@ def on_market_data(mdp: MarketDataPoint):
     state = symbol_states[mdp.symbol]
     regime, signal = state.update_state(mdp.price)
     
-    print(f"New signal: {signal}")
+    print(f"Regime: {regime} detected for {mdp.symbol} at {mdp.timestamp}")
+    print(f"Signal: {signal}")
 
     return signal
 
-def initialize_system():
+def run_stream():
+    """Iterate over live market datapoints from Alpaca Socket Webstream, run all strategies per symbol, and route to OrderManager."""
     api_key, api_secret = load_keys()
     trading_client = TradingClient(api_key, api_secret, paper=True)
     
     risk_engine = RiskEngineLive(max_order_value=10000 , max_asset_percentage=0.10)
-    order_manager = OrderManager(trading_client, risk_engine, simulated=False)
+    om = OrderManager(trading_client, risk_engine, simulated=False)
 
-    order_builder = OrderBuilder(trading_client)
-    
-    return order_manager, order_builder
-
-def run_stream():
-    """Iterate over live market datapoints from Alpaca Socket Webstream, run all strategies per symbol, and route to OrderManager."""
-    om, ob = initialize_system()
+    ob = OrderBuilder(trading_client)
 
     for mdp in load_market_data(simulated=False):
         signal = on_market_data(mdp)
+        
+        if signal is None:
+            print("No signal yet (startup warmup)")
+            continue
+
         order = ob.build_order(signal)
+        if order is None:
+            continue
 
         result = om.process_order(order)
         print(result)

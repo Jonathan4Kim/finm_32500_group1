@@ -1,5 +1,14 @@
+import sys
+import os
+
+# Add the project root (PTS) to Python path
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.append(ROOT)
+
 from strategy import MarketDataPoint, Signal, SignalType
-from strategy_class import Strategy
+from strategy import MarketDataPoint, Signal, SignalType
+from strategies.strategy_class import Strategy
 from indicator_engine import IndicatorEngine
 
 class ReversalStrategy(Strategy):

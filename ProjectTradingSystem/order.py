@@ -99,8 +99,11 @@ class OrderBuilder():
 
     def build_order(self, signal: Signal) -> Order:
 
+        if signal is None:
+            return None
+
         order = Order(
-            side = signal.signal.value,
+            side = signal.signal,
             symbol = signal.symbol,
             qty = self.get_order_size(signal),
             price = signal.price
