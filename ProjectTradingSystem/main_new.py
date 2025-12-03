@@ -29,13 +29,19 @@ def on_market_data(mdp: MarketDataPoint):
     state = symbol_states[mdp.symbol]
     regime, signal = state.update_state(mdp.price, mdp.timestamp)
 
+    # --- Warmup Phase ---
     if regime == "WARMING":
-        if state.bars_seen % 5 == 0:  # only log every 5 bars to reduce spam
+        if state.bars_seen % 5 == 0:
             print(f"[{mdp.symbol}] Warming up: {state.bars_seen}/{state.warmup_bars}")
-    else:
-        print(f"Regime: {regime} detected for {mdp.symbol} at {mdp.timestamp}")
-        print(f"Signal: {signal}")
+        return None   # Do NOT pass warmup-signal into order system
 
+    # --- Neutral/No-Regime Phase ---
+    if regime == "NEUTRAL" or signal is None:
+        print(f"[{mdp.symbol}] Neutral / No actionable signal at {mdp.timestamp}")
+        return None
+
+    # --- Valid Signal / Active Regime ---
+    print(f"[{mdp.symbol}] Regime={regime} | Signal={signal} | Timestamp={mdp.timestamp}")
     return signal
 
 def run_stream():

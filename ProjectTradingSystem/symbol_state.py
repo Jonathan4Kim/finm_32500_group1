@@ -28,6 +28,7 @@ class SymbolState:
         """
 
         # STEP 1 — Update Indicators for This Symbol
+        self.bars_seen += 1
         self.indicators.on_price(price)
 
         # Check warmup progress
