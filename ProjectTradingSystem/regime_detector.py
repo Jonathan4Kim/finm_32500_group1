@@ -14,7 +14,13 @@ class RegimeDetector:
 
     def detect(self, price: float, engine: IndicatorEngine):
 
+        if len(engine.prices) < 20:
+            return None
+
         if engine.ema9 is None or engine.ema21 is None or engine.ema50 is None:
+            return None
+        
+        if engine.atr14 is None:
             return None
 
         # Store previous
