@@ -103,7 +103,7 @@ class OrderBuilder():
             return None
 
         order = Order(
-            side = signal.signal,
+            side = signal.signal.value,
             symbol = signal.symbol,
             qty = self.get_order_size(signal),
             price = signal.price
