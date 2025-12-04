@@ -9,7 +9,7 @@ if ROOT not in sys.path:
 from strategies.breakout_strategy import BreakoutStrategy
 from strategies.trend_strategy import TrendStrategy
 from strategies.reversal_strategy import ReversalStrategy
-from strategy import Signal, SignalType
+from strategy import Signal, SignalType, MarketDataPoint
 
 class StrategyRouter:
     """
@@ -25,7 +25,7 @@ class StrategyRouter:
     def route(
         self,
         regime: str,
-        price: float,
+        mdp: MarketDataPoint,
         engine,
         prev_ema9: float,
         prev_ema21: float
@@ -33,16 +33,16 @@ class StrategyRouter:
 
         # --- BREAKOUT REGIME ---
         if regime == "BREAKOUT":
-            return self.breakout.generate_signal(price, engine)
+            return self.breakout.generate_signal(mdp, engine)
 
         # --- TREND REGIME ---
         if regime == "TREND":
-            return self.trend.generate_signal(price, engine)
+            return self.trend.generate_signal(mdp, engine)
 
         # --- REVERSAL REGIME ---
         if regime == "REVERSAL":
             return self.reversal.generate_signal(
-                price=price,
+                mdp=mdp,
                 engine=engine,
                 prev_ema9=prev_ema9,
                 prev_ema21=prev_ema21,

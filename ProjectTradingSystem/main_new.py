@@ -27,7 +27,7 @@ def on_market_data(mdp: MarketDataPoint):
         return None
 
     state = symbol_states[mdp.symbol]
-    regime, signal = state.update_state(mdp.price, mdp.timestamp)
+    regime, signal = state.update_state(mdp, mdp.timestamp)
 
     # --- Warmup Phase ---
     if regime == "WARMING":
