@@ -34,14 +34,6 @@ class IndicatorEngine:
         self.ema21 = self._update_ema(self.ema21, price, 21)
         self.ema50 = self._update_ema(self.ema50, price, 50)
 
-        # DEBUG: Always prints, even during warmup
-        print(
-            f"[EMA DEBUG] price={price:.2f} | "
-            f"ema9={self.ema9} | "
-            f"ema21={self.ema21} | "
-            f"ema50={self.ema50}"
-        )
-
     def _update_atr(self, price: float):
         if self.last_price is None:
             self.last_price = price
