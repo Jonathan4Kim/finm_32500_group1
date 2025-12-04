@@ -40,7 +40,7 @@ class SymbolState:
 
             # Enough bars — we are now warm
             self.is_warm = True
-            log_regime(self.symbol, timestamp, "WARMUP COMPLETE", price)
+            log_regime(self.symbol, timestamp, "WARMUP COMPLETE", mdp.price)
 
         # STEP 2 — Detect Regime
         regime = self.regime_detector.detect(
