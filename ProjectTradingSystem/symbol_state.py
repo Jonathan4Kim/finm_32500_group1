@@ -68,7 +68,7 @@ class SymbolState:
             prev_ema21=self.prev_ema21
         )
 
-        log_signal(self.symbol, timestamp, signal)
+        #log_signal(self.symbol, timestamp, signal)
 
         # STEP 4 — Store this bar’s EMAs for next bar’s reversal logic
         self.prev_ema9 = self.indicators.ema9
