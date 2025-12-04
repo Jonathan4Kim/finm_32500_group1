@@ -15,6 +15,6 @@ def log_signal(symbol, timestamp, signal):
         return
     
     signal_logger.info(
-        f"{timestamp} | {symbol} | Signal={signal.side.value} "
+        f"{timestamp} | {symbol} | Signal={signal.signal.value} "
         f"| Confidence={signal.confidence:.2f} | Reason={signal.reason}"
     )
