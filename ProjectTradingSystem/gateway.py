@@ -11,7 +11,8 @@ from alpaca_env_util import load_keys
 from data_client import LiveMarketDataSource
 from order import Order
 from strategy import MarketDataPoint
-
+from config.stocks import STOCKS
+from config.crypto import CRYPTO
 
 def _parse_timestamp(ts_str: str) -> Optional[datetime]:
     """
@@ -93,25 +94,7 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         # Create equity source for multiple stock symbols
         equity_source = LiveMarketDataSource(
             api_key, api_secret,
-            symbols = [
-            "COST","KO","CVX","PM","LLY","CRM","TMO","DIS","PANW","NKE","MKC",
-            "JPM","GS",
-            "XOM","SLB",
-            "UNH","ABBV",
-            "HD","WMT",
-            "PG","PEP",
-            "V","MA",
-            "CAT","GE",
-            "FDX","UPS",
-            "PLD","AMT",
-            "NEE","DUK",
-            "CSCO","TXN",
-            "BKNG","MAR",
-            "MCD","SBUX",
-            "T","TMUS",
-            "ADP","PAYX",
-            "MSCI","CME",
-            "DHR","REGN"],
+            symbols = STOCKS,
             csv_path="data/streamed_stock_data.csv",
             stream_type="stock"
         )
@@ -119,7 +102,7 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         # Create crypto source for multiple crypto symbols
         crypto_source = LiveMarketDataSource(
             api_key, api_secret,
-            symbols=["BTC/USD", "ETH/USD", "SOL/USD"],
+            symbols = CRYPTO,
             csv_path="data/streamed_crypto_data.csv",
             stream_type="crypto"
         )
@@ -145,7 +128,7 @@ def load_market_data(simulated: bool = False) -> Generator[MarketDataPoint, None
         crypto_thread = Thread(target=stream_to_queue, args=(crypto_source, shared_queue), daemon=True)
         
         equity_thread.start()
-        # crypto_thread.start() # TODO: Remove crypto trading due to fees
+        # crypto_thread.start()
 
         print("Both streams running independently...")
         print("- Crypto: 24/7")

@@ -85,7 +85,7 @@ class OrderBuilder():
         
         if signal.signal == SignalType.BUY:
             account = self.trading_client.get_account()
-            cash = float(account.cash)
+            cash = float(account.non_marginable_buying_power)
 
             allocation = cash * 0.01   # 1% of total cash
 
@@ -98,6 +98,9 @@ class OrderBuilder():
 
 
     def build_order(self, signal: Signal) -> Order:
+
+        if signal is None:
+            return None
 
         order = Order(
             side = signal.signal.value,

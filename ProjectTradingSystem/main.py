@@ -34,9 +34,9 @@ def run_stream():
         # Lazily create a set of strategies for each symbol encountered.
         if not strategies[mdp.symbol]:
             strategies[mdp.symbol] = [
-                MAStrategy(symbol=mdp.symbol, short_window=5, long_window=10),
-                MomentumStrategy(symbol=mdp.symbol, momentum_window=10, momentum_threshold=0.001),
-                StatisticalSignalStrategy(symbol=mdp.symbol, lookback_window=10, zscore_threshold=1.5),
+                MAStrategy(symbol=mdp.symbol, short_window=5, long_window=13),
+                MomentumStrategy(symbol=mdp.symbol, momentum_window=21, momentum_threshold=0.001),
+                StatisticalSignalStrategy(symbol=mdp.symbol, lookback_window=21, zscore_threshold=1.5),
             ]
 
         # Checks the signal for each strategy given the new data

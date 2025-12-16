@@ -20,6 +20,7 @@ order_audit**
 order_log.csv
 .alpaca_api_key
 .alpaca_api_secret
+ProjectTradingSystem/logs
 
 # Assignment 10
 Assignment10/market_data
